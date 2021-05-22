@@ -7,15 +7,6 @@ output:
 
 #
 
-```{r RMD SETTINGS, message=FALSE, warning=FALSE, include=FALSE}
-rm(list = ls()); gc() 
-knitr::opts_knit$set(root.dir = "C:/Users/sflor/Documents/Data IMED/Prestaciones/")
-knitr::opts_chunk$set(include = FALSE,
-                      echo = FALSE,
-                      message = FALSE,
-                      warning = FALSE)
-```
-
 ```{r LIBRERIAS, message=FALSE, warning=FALSE, include=FALSE}
 library(data.table)
 library(tidyverse)
@@ -38,18 +29,18 @@ prest.sexo <- c("Oncology Consultations", "Antigens", "Biopsy", "Neoplastic Cell
 ```
 
 ```{r LOAD DATA PLOTS}
-load("C:/Users/sflor/Dropbox/Trabajo/ANID-Covid/Analisis IMED/prestaciones/output/DB/20210408 DB predichos nb sti.RData")
+load("output/DB/DB predichos nb sti.RData")
 dat.plots.agg <- dat.plots
 
-load(file = "C:/Users/sflor/Dropbox/Trabajo/ANID-Covid/Analisis IMED/prestaciones/output/DB/20210310 DB predichos nb sti x prestacion.RData")
+load(file = "output/DB/DB predichos nb sti x prestacion.RData")
 dat.plots.type <- dat.plots[
   , grupo.trz := factor(grupo.trz, labels = prest) ]
 
-load(file = "C:/Users/sflor/Dropbox/Trabajo/ANID-Covid/Analisis IMED/prestaciones/output/DB/20210310 DB predichos nb sti x sexo.RData")
+load(file = "output/DB/DB predichos nb sti x sexo.RData")
 dat.plots.type.sexo <- dat.plots[
   , grupo.trz := factor(grupo.trz, labels = prest.sexo) ]
 
-load(file = "C:/Users/sflor/Dropbox/Trabajo/ANID-Covid/Analisis IMED/prestaciones/output/DB/20210129 DB predichos nb sti x prevision.RData")
+load(file = "output/DB/DB predichos nb sti x prevision.RData")
 dat.plots.type.prev <- dat.plots[
   , grupo.trz := factor(grupo.trz, labels = prest) ]
 
@@ -167,7 +158,7 @@ g1 <- ggarrange(g1.agg, g1.type, ncol = 1, heights = c(1, 3),
 
 
 ggsave(plot = g1,
-       filename = "C:/Users/sflor/Dropbox/Trabajo/ANID-Covid/Analisis IMED/paper/prestaciones fig1.pdf", 
+       filename = "output/plots/paper prestaciones fig1.pdf", 
        device = "pdf",
        dpi = "retina",
        width = 6, height = 9)
@@ -284,7 +275,7 @@ g1 <- ggarrange(g1.agg, g1.type, ncol = 1, heights = c(1, 6),
 
 
 ggsave(plot = g1,
-       filename = "C:/Users/sflor/Dropbox/Trabajo/ANID-Covid/Analisis IMED/paper/prestaciones fig1 prevision.pdf",
+       filename = "output/plots/paper prestaciones fig1 prevision.pdf",
        device = "pdf",
        dpi = "retina",
        width = 6, height = 18)
@@ -388,7 +379,7 @@ g1 <- ggarrange(g1.agg, g1.type, ncol = 1, heights = c(1, 3),
 
 
 ggsave(plot = g1,
-       filename = "C:/Users/sflor/Dropbox/Trabajo/ANID-Covid/Analisis IMED/paper/prestaciones fig1 sexo.pdf", 
+       filename = "output/plots/paper prestaciones fig1 sexo.pdf", 
        device = "pdf",
        dpi = "retina",
        width = 6, height = 10)
