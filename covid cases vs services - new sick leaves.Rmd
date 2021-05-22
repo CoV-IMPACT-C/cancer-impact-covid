@@ -1,0 +1,113 @@
+---
+title: "Serie de prestaciones, lme y ges vs serie de casos de COVID-19"
+output: 
+---
+
+#Librerías
+
+```{r}
+library(data.table)
+library(tidyverse)
+```
+
+#Datos
+
+```{r}
+dat.covid <- fread("all services/FechaInicioSintomas_std.csv") %>% 
+  filter(`Semana Epidemiologica` < 202100) %>% 
+  mutate(week = `Semana Epidemiologica` - 202000) %>% 
+  group_by(week) %>% 
+  summarise(casos = sum(`Casos confirmados`),
+            poblacion = sum(Poblacion))
+```
+
+```{r}
+load("health services/output/DB/DB predichos nb sti.RData")
+
+dat.prest <- dat.plots %>% 
+  filter(year == 2020,
+         mod.int == "Additive") %>% 
+  mutate(week = as.numeric(week)) %>% 
+  group_by(week) %>% 
+  summarise(count_prest = sum(count),
+            cf_prest = sum(cf))
+
+rm(dat.plots)
+
+load("sick leaves/output/DB/DB predichos nb sti nuevos.RData")
+
+dat.lme <- dat.plots %>% 
+  filter(year == 2020) %>% 
+  mutate(week = as.numeric(week)) %>% 
+  group_by(week) %>% 
+  summarise(count_lme = sum(count),
+            cf_lme = sum(cf))
+
+rm(dat.plots)
+
+dat.ges <- haven::read_dta("diag confirms/output/DB/all cancers observed predicted counterfactual.dta") %>% 
+  filter(ano == 2020) %>% 
+  group_by(semana) %>% 
+  summarise(count_ges = sum(`_freq`),
+            cf_ges = sum(nhat0)) %>% 
+  mutate(week = semana-1,
+         semana = NULL)
+```
+
+
+```{r}
+dat <- full_join(dat.prest, dat.covid, by = "week") 
+dat <- full_join(dat.ges, dat, by = c("week"))
+dat <- full_join(dat.lme, dat, by = "week")
+
+dat <- dat %>% 
+  pivot_longer(cols = c(cf_lme, cf_ges, cf_prest, count_lme, count_ges, count_prest),
+               names_to = c("scenario","data"),
+               names_sep = c("_"),
+               values_to = c("count")) %>% 
+  pivot_wider(names_from = scenario, 
+              values_from = count) %>% 
+  filter(week < 53) %>% 
+  mutate(caida_abs = cf-count,
+         caida_rel = caida_abs*100 /cf,
+         data = factor(data, levels = c("prest", "ges", "lme"), 
+                       labels = c("Ambulatory\nservices", 
+                                  "Diagnostic\n confirmations", "New sick\nleaves")))
+
+
+#rm(dat.prest, dat.lme, dat.ges, dat.covid)
+```
+
+# Plot Caida relativa
+
+```{r fig.height=3, fig.width=8}
+scale.factor <- max(dat$caida_rel, na.rm = T) / max(dat$casos, na.rm = T)
+
+g <- dat %>% 
+  ggplot(aes(x = week)) +
+  geom_point(aes(y = casos*scale.factor, color = "COVID-19 new cases")) +
+  geom_line(aes(y = casos*scale.factor, color = "COVID-19 new cases")) +
+
+  geom_point(aes(y = caida_rel, color = "% reduction of cancer-related services")) +
+  geom_line(aes(y = caida_rel, color = "% reduction of cancer-related services")) +
+
+  scale_y_continuous(name = "% Cancer-related services reduction", 
+                     sec.axis = sec_axis(~./scale.factor, name = "New COVID-19 cases")) +
+  geom_vline(xintercept = 11, linetype = "dotted", color = "red") +
+  geom_hline(yintercept = 0, linetype = 3, color = "black") +
+  facet_grid(data ~ .) +
+  
+  labs(x = "Week")+
+  theme_minimal() +
+  theme(legend.title = element_blank(), legend.position = "top") 
+
+g
+
+ggsave(plot = g,
+       filename = "all services/paper Fig0 lme nuevas.pdf", 
+       device = "pdf",
+       dpi = "retina",
+       width = 8, height = 5)  
+```
+
+
