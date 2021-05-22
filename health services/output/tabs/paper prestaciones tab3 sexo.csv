@@ -1,0 +1,18 @@
+"";"";"Health Services Group";"Men Count (CI 95%)";"Women Count (CI 95%)";"Excess impact on women Count (CI 95%)"
+"1";"General Oncological Services";"Oncology Consultations";"11844 (10311-13599)";"24099 (21393-27139)";"12255 (11082-13540)"
+"2";"General Oncological Services";"Antigens";"6785 (5779-7943)";"16850 (14763-19200)";"10064 (8983-11258)"
+"3";"General Oncological Services";"Biopsy";"13076 (10994-15533)";"26595 (23003-30727)";"13518 (12008-15194)"
+"4";"General Oncological Services";"Neoplastic Cells";"1 (-6-26)";"64 (28-136)";"63 (34-111)"
+"5";"General Oncological Services";"Pet Ct";"604 (442-813)";"390 (261-560)";"-213 (-182--253)"
+"6";"Colorectal Cancer";"Occult bleeding";"5249 (4445-6187)";"10284 (8756-12065)";"5035 (4311-5877)"
+"7";"Colorectal Cancer";"Sigmoidoscopy and Colonoscopy";"8152 (6983-9507)";"18782 (16264-21678)";"10629 (9281-12171)"
+"8";"Gastric Cancer";"Esophagoscopy, Gastroduodenoscopy, Yeyuno Ileoscopy";"22452 (19190-26241)";"48276 (41576-56017)";"25824 (22386-29776)"
+"9";"Gastric Cancer";"Ureasa";"20720 (17691-24243)";"41844 (35940-48682)";"21124 (18250-24439)"
+"10";"Cervical Cancer";"Cervical Biopsy";NA;"579 (408-798)";NA
+"11";"Cervical Cancer";"Colposcopy";NA;"1354 (1068-1708)";NA
+"12";"Cervical Cancer";"Papanicolaou";NA;"123161 (107682-140716)";NA
+"13";"Breast Cancer";"Breast Ultrasound";NA;"122902 (107522-140321)";NA
+"14";"Breast Cancer";"Mammography";NA;"118273 (102558-136195)";NA
+"15";"Breast Cancer";"Breast MRI";NA;"543 (389-748)";NA
+"16";"Prostate Cancer";"Prostate-Specific Antigen";"112583 (94823-133290)";NA;NA
+"17";"Prostate Cancer";"Prostate Ultrasoud";"31203 (26604-36529)";NA;NA
