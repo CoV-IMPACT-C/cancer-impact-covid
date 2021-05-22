@@ -1,0 +1,250 @@
+---
+title: "Limpieza de base de datos para modelos de caída de prestaciones por grupos de cáncer"
+output: 
+---
+# 
+
+```{r LIBRERIAS, message=FALSE, warning=FALSE, include=FALSE}
+library(disk.frame)
+library(data.table)
+library(tidyverse)
+library(lubridate)
+```
+
+# 1. Datos
+
+```{r DISK.FRAME SETTINGS, message=FALSE, warning=FALSE}
+setup_disk.frame(workers = 3)
+options(future.globals.maxSize = Inf)
+```
+
+```{r SELECCION PRESTACIONES}
+prestaciones <- fread("C:/Users/sflor/Documents/Data IMED/Diccionarios/dom_codprestacion_000", encoding = "UTF-8")
+
+trazadoras <- data.table(
+  cod_prest = c(c(101211, 101331, 101821, 101830, 101831, 101836,
+                                  101904, 101905, 101914, 101918),
+                308004,
+                c(1801004, 1801005, 1801006, 1801007),
+                c(1801037, 1801040),
+                c(1801001, 1801002, 1801003, 1801053),
+                c(401010, 401110, 401130, 404025, 404026),
+                c(404012, 404024),
+                405031,
+                c(801001, 801806),
+                2001002,
+                2001014,
+                c(305009, 305170),
+                308009,
+                501135,
+                c(801008, 801007),
+                c(1901005, 404009),
+                c(305822, 305810, 305070, 301900)
+
+                ),
+  grupo.trz = c(rep("Consultas Oncología", 10),
+                "Screening Cáncer Colon (Hemorragias Ocultas)",
+                rep("Screening Cáncer Colon (Sigmoidoscopia y Colonoscopía)", 4),
+                rep("Screening Cáncer Gástrico (Ureasa)", 2),
+                rep("Screening Cáncer Gástrico (Esofagoscopía, Gastroduodenoscopía, Yeyuno Ileoscopia)", 4),
+                rep("Screening Cáncer Mamario (Mamografía)", 5),
+                rep("Screening Cáncer Mamario (Ecografía mamaria)", 2),
+                "Screening Cáncer Mamario (Resonancia magnética de mama)",
+                rep("Screening Cáncer Cuello de Útero (Papanicolaou)", 2),
+                "Screening Cáncer Cuello de Útero (Colposcopía)",
+                "Screening Cáncer Cuello de Útero (Biopsia)",
+                rep("Screening Cáncer (Antígenos)", 2),
+                "Screening Cáncer (Células Neoplásicas)",
+                "Screening Cáncer (Pet Ct)",
+                rep("Screening Cáncer (Biopsias)", 2),
+                rep("Screening Cáncer Próstata (Ecografía Prostática)", 2),
+                rep("Screening Cáncer Próstata (Antígeno Prostático)", 4)
+                )
+)
+
+prestaciones <- trazadoras[prestaciones, on = "cod_prest"]
+
+trazadoras <- trazadoras[, codprestacion := cod_prest][, cod_prest := NULL]
+
+save(prestaciones, file = "C:/Users/sflor/Dropbox/Trabajo/ANID-Covid/Analisis IMED/prestaciones/output/DB/prestaciones.RData")
+save(trazadoras, file = "C:/Users/sflor/Dropbox/Trabajo/ANID-Covid/Analisis IMED/prestaciones/output/DB/trazadoras.RData")
+```
+
+```{r LOAD DATA YEAR, message=F}
+path_to_files <- "C:/Users/sflor/Documents/Data IMED/Prestaciones"
+
+list_files <- list.files(path = path_to_files, 
+                         pattern = "txb_resumenprestacion_u2020", 
+                         full.names = TRUE) 
+
+system.time(dat.2020 <- csv_to_disk.frame(infile = list_files,
+                                     backend = "data.table",
+                                     #colClasses = list(character = c("coditem")),
+                                     select = c("fecemision", "codprestacion", 
+                                                "sexobeneficiario", "edadbeneficiario", 
+                                                "codfinanciador", "rutbeneficiario")))
+
+list_files <- list.files(path = path_to_files, 
+                         pattern = "txb_resumenprestacion_u2019", 
+                         full.names = TRUE) 
+
+system.time(dat.2019 <- csv_to_disk.frame(infile = list_files,
+                                     backend = "data.table",
+                                     #colClasses = list(character = c("coditem") ),
+                                     select = c("fecemision", "codprestacion", 
+                                                "sexobeneficiario", "edadbeneficiario", 
+                                                "codfinanciador", "rutbeneficiario")))
+
+list_files <- list.files(path = path_to_files, 
+                         pattern = "txb_resumenprestacion_u2018", 
+                         full.names = TRUE) 
+
+system.time(dat.2018 <- csv_to_disk.frame(infile = list_files,
+                                     backend = "data.table",
+                                     #colClasses = list(character = c("coditem") ),
+                                     select = c("fecemision", "codprestacion", 
+                                                "sexobeneficiario", "edadbeneficiario", 
+                                                "codfinanciador", "rutbeneficiario")))
+
+rm(list_files, path_to_files)
+```
+
+```{r CLEAN DATA, message=F, warning=F}
+load("C:/Users/sflor/Dropbox/Trabajo/ANID-Covid/Analisis IMED/prestaciones/output/DB/trazadoras.RData")
+
+. <- dat.2018[
+    
+    #FILTROS
+  codprestacion %in% trazadoras[,codprestacion]][
+  
+    #RECODIFICACION
+  , edad_cat := as.factor(cut(edadbeneficiario, seq(0, 80, 10), right = F)) ][
+    , edadbeneficiario := NULL][
+  , sexo := as.factor(ifelse(sexobeneficiario == "I", NA, sexobeneficiario)) ][
+    , sexobeneficiario := NULL][
+  , prevision := as.factor(ifelse(codfinanciador %in% c(455, 937), "FONASA",
+                            ifelse(codfinanciador %in% c(3174, 2144, 1645, 3045, 
+                                                         2155, 3421, 1620, 2366),
+                                   "ISAPRE", "Otro"))) ][, codfinanciador := NULL][
+
+    #NUEVAS VARIABLES
+  , date := as.Date(fecemision) ][, facemision := NULL][
+  , date_wk := as.Date(tsibble::yearweek(date)) ][
+  , week := lubridate::week(date_wk) ][
+  , year := lubridate::year(date_wk) ]
+
+dat.2018.dt <- .
+
+. <- dat.2019[
+    
+    #FILTROS
+  codprestacion %in% trazadoras[,codprestacion]][
+  
+    #RECODIFICACION
+  , edad_cat := as.factor(cut(edadbeneficiario, seq(0, 80, 10), right = F)) ][
+    , edadbeneficiario := NULL][
+  , sexo := as.factor(ifelse(sexobeneficiario == "I", NA, sexobeneficiario)) ][
+    , sexobeneficiario := NULL][
+  , prevision := as.factor(ifelse(codfinanciador %in% c(455, 937), "FONASA",
+                            ifelse(codfinanciador %in% c(3174, 2144, 1645, 3045, 
+                                                         2155, 3421, 1620, 2366),
+                                   "ISAPRE", "Otro"))) ][, codfinanciador := NULL][
+
+    #NUEVAS VARIABLES
+  , date := as.Date(fecemision) ][, facemision := NULL][
+  , date_wk := as.Date(tsibble::yearweek(date)) ][
+  , week := lubridate::week(date_wk) ][
+  , year := lubridate::year(date_wk) ]
+  
+dat.2019.dt <- .
+
+. <- dat.2020[
+    
+    #FILTROS
+  codprestacion %in% trazadoras[,codprestacion]][
+  
+    #RECODIFICACION
+  , edad_cat := as.factor(cut(edadbeneficiario, seq(0, 80, 10), right = F)) ][
+    , edadbeneficiario := NULL][
+  , sexo := as.factor(ifelse(sexobeneficiario == "I", NA, sexobeneficiario)) ][
+    , sexobeneficiario := NULL][
+  , prevision := as.factor(ifelse(codfinanciador %in% c(455, 937), "FONASA",
+                            ifelse(codfinanciador %in% c(3174, 2144, 1645, 3045, 
+                                                         2155, 3421, 1620, 2366),
+                                   "ISAPRE", "Otro"))) ][, codfinanciador := NULL][
+
+    #NUEVAS VARIABLES
+  , date := as.Date(fecemision) ][, facemision := NULL][
+  , date_wk := as.Date(tsibble::yearweek(date)) ][
+  , week := lubridate::week(date_wk) ][
+  , year := lubridate::year(date_wk) ]
+  
+dat.2020.dt <- .
+
+dat.ind <- rbind(dat.2018.dt, dat.2019.dt, dat.2020.dt)
+
+dat.ind <- full_join(dat.ind, trazadoras)
+
+. <- dat.ind[
+  , .(count_ind = .N), by = .(grupo.trz, week, year, date_wk, sexo, 
+                              edad_cat, prevision, rutbeneficiario)][
+  , grupo.trz := as.factor(grupo.trz) ]
+  
+dat <- .
+
+save(dat, file = "C:/Users/sflor/Dropbox/Trabajo/ANID-Covid/Analisis IMED/prestaciones/output/DB/DB para modelos.RData")
+
+#rm(trazadoras, dat.2018.dt, dat.2019.dt, dat.2020.dt, dat.ind)
+```
+  
+Generamos una nueva base de datos que agrupa el conteo de ruts (individuos) por grupo de prestación, semana, año, sexo, edad, previsión y región, que se utilizará en los análisis.  
+
+```{r GROUP DATA}
+. <- dat[
+  # FILTRO
+  #  date_wk < as.Date("2020-08-31")  ][
+    !( (grupo.trz %in% c("Screening Cáncer Mamario (Ecografía mamaria)", 
+                         "Screening Cáncer Mamario (Mamografía)", 
+                         "Screening Cáncer Mamario (Resonancia magnética de mama)", 
+                         "Screening Cáncer Cuello de Útero (Biopsia)", 
+                         "Screening Cáncer Cuello de Útero (Colposcopía)", 
+                         "Screening Cáncer Cuello de Útero (Papanicolaou)")) & 
+         sexo == "M")  ][
+    !( (grupo.trz %in% c("Screening Cáncer Próstata (Ecografía Prostática)", 
+                         "Screening Cáncer Próstata (Antígeno Prostático)")) & 
+         sexo == "F")  ][
+    prevision %in% c("FONASA", "ISAPRE")  ][
+
+  # VARIABLES NUEVAS Y MODIFICADAS
+  , .(count = .N), by = .(grupo.trz, week, year, date_wk, sexo, edad_cat, prevision) ][
+
+  , cuarentenas := ifelse(date_wk < as.Date("2020-03-15"), 0, 1)  ][
+  , time := as.numeric(factor(date_wk, labels = 0:156)) - 1  ][
+  , time_after := ifelse(time < 115, 0, (time - 115 ))  ][
+  , edad_cat := relevel(edad_cat, "[40,50)")  ][
+  , sexo := relevel(sexo, "M")  ][
+  , sexo := factor(sexo, labels = c("Male", "Female"))  ][
+    
+  # REMOVEMOS CATEGORIAS NA
+    !is.na(edad_cat) & !is.na(sexo)
+  ]
+
+dat.ag <- droplevels.data.frame(.)
+
+dat.ag$grp.cancer <- factor(dat.ag$grupo.trz, 
+                               labels = c("General Oncology", "General Oncology", "General Oncology",
+                                          "General Oncology", "General Oncology", 
+                                          "Colorectal Cancer", "Colorectal Cancer", 
+                                          "Cervical Cancer", "Cervical Cancer", "Cervical Cancer",  
+                                          "Gastric Cancer", "Gastric Cancer", 
+                                          "Breast Cancer", "Breast Cancer", "Breast Cancer",
+                                          "Prostate Cancer", "Prostate Cancer"))
+
+save(dat.ag, file = "C:/Users/sflor/Dropbox/Trabajo/ANID-Covid/Analisis IMED/prestaciones/output/DB/DB para modelos agregada.RData")
+
+```
+
+```{r}
+load("C:/Users/sflor/Dropbox/Trabajo/ANID-Covid/Analisis IMED/prestaciones/output/DB/DB para modelos agregada.RData")
+```
+
