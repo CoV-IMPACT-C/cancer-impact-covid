@@ -6,15 +6,6 @@ output:
 
 #
 
-```{r RMD SETTINGS, message=FALSE, warning=FALSE, include=FALSE}
-rm(list = ls()); gc() 
-knitr::opts_knit$set(root.dir = "C:/Users/sflor/Documents/Data/")
-knitr::opts_chunk$set(include = FALSE,
-                      echo = FALSE,
-                      message = FALSE,
-                      warning = FALSE)
-```
-
 ```{r LIBRERIAS, message=FALSE, warning=FALSE, include=FALSE}
 library(data.table)
 library(tidyverse)
@@ -37,18 +28,18 @@ prest.sexo <- c("Oncology Consultations", "Antigens", "Biopsy", "Neoplastic Cell
 ```
 
 ```{r LOAD DATA TABS}
-load("C:/Users/sflor/Dropbox/Trabajo/ANID-Covid/Analisis IMED/prestaciones/output/tabs_prestaciones/20210408 coef sti datos agregados.RData")
+load("output/tabs/coef sti datos agregados.RData")
 tab.models.agg <- tab.models
 
-load(file = "C:/Users/sflor/Dropbox/Trabajo/ANID-Covid/Analisis IMED/prestaciones/output/tabs_prestaciones/20210310 coef sti prestacion.RData")
+load(file = "output/tabs/coef sti prestacion.RData")
 tab.models.type <- tab.models[
   , Grupo := factor(Grupo, labels = prest) ]
 
-load(file = "C:/Users/sflor/Dropbox/Trabajo/ANID-Covid/Analisis IMED/prestaciones/output/tabs_prestaciones/20210128 coef sti prevision.RData")
+load(file = "output/tabs/coef sti prevision.RData")
 tab.models.type.prev <- tab.models[
   , Grupo := factor(Grupo, labels = prest) ]
 
-load(file = "C:/Users/sflor/Dropbox/Trabajo/ANID-Covid/Analisis IMED/prestaciones/output/tabs_prestaciones/20210310 coef sti sexo.RData")
+load(file = "output/tabs/coef sti sexo.RData")
 tab.models.type.sexo <- tab.models[
   , Grupo := factor(Grupo, labels = prest.sexo) ]
 
@@ -57,26 +48,24 @@ rm(tab.models)
 ```
 
 ```{r LOAD DATA PLOTS}
-load("C:/Users/sflor/Dropbox/Trabajo/ANID-Covid/Analisis IMED/prestaciones/output/DB/20210408 DB predichos nb sti.RData")
+load("output/DB/DB predichos nb sti.RData")
 dat.plots.agg <- dat.plots
 
-load(file = "C:/Users/sflor/Dropbox/Trabajo/ANID-Covid/Analisis IMED/prestaciones/output/DB/20210310 DB predichos nb sti x prestacion.RData")
+load(file = "output/DB/DB predichos nb sti x prestacion.RData")
 dat.plots.type <- dat.plots[
   , grupo.trz := factor(grupo.trz, labels = prest) ]
 
-load(file = "C:/Users/sflor/Dropbox/Trabajo/ANID-Covid/Analisis IMED/prestaciones/output/DB/20210310 DB predichos nb sti x sexo.RData")
+load(file = "output/DB/DB predichos nb sti x sexo.RData")
 dat.plots.type.sexo <- dat.plots[
   , grupo.trz := factor(grupo.trz, labels = prest.sexo) ]
 
-load(file = "C:/Users/sflor/Dropbox/Trabajo/ANID-Covid/Analisis IMED/prestaciones/output/DB/20210129 DB predichos nb sti x prevision.RData")
+load(file = "output/DB/DB predichos nb sti x prevision.RData")
 dat.plots.type.prev <- dat.plots[
   , grupo.trz := factor(grupo.trz, labels = prest) ]
 
 rm(dat.plots)
 
 ```
-
-
 
 # Tablas
 
@@ -120,7 +109,7 @@ colnames(tab.wk.tot) <- c("", "Health Services Group", "2018 Mean (SD)", "2019 M
 
 tab1 <- rbind(tab.wk.tot, tab.wk)
 
-write.csv2(tab1, file = "C:/Users/sflor/Dropbox/Trabajo/ANID-Covid/Analisis IMED/paper/prestaciones tab1.csv")
+write.csv2(tab1, file = "output/tabs/paper prestaciones tab1.csv")
 
 ```
 
@@ -151,55 +140,13 @@ tab2 <- tab.models.agg %>%
             time = paste0(IRR_time, " (", IC_lower_time, "-",
                           IC_upper_time, ")"))
 
-write_csv2(tab2, file = "C:/Users/sflor/Dropbox/Trabajo/ANID-Covid/Analisis IMED/paper/prestaciones tab2.csv")
+write_csv2(tab2, file = "output/tabs/paper prestaciones tab2.csv")
 
 ```
 
 ## Tabla 3 
 
-Reducción absoluta de conteos durante el periodo de pandemia
-
-```{r}
-tab.agg <- dat.plots.agg %>% 
-  filter(pandemia == 1,
-         mod.int == "Additive") %>% 
-  summarise(count = sum(count),
-            yhat = sum(yhat),
-            cf = sum(cf),
-            ub = sum(ub),
-            lb = sum(lb),
-            cf_ub = sum(cf_ub),
-            cf_lb = sum(cf_lb),
-            dif = cf - yhat,
-            dif_ub = cf_ub - ub,
-            dif_lb = cf_lb - lb) %>% 
-  mutate_if(is.numeric, ~round(., 2)) %>% 
-  summarise(DIF = paste0(dif, " (", dif_lb, "-", dif_ub, ")"))
-
-
-tab3 <- dat.plots.type %>% 
-  filter(pandemia == 1) %>% 
-  group_by(grp.cancer, grupo.trz) %>% 
-  summarise(count = sum(count),
-            yhat = sum(yhat),
-            cf = sum(cf),
-            ub = sum(ub),
-            lb = sum(lb),
-            cf_ub = sum(cf_ub),
-            cf_lb = sum(cf_lb),
-            dif = cf - yhat,
-            dif_ub = cf_ub - ub,
-            dif_lb = cf_lb - lb) %>% 
-  mutate_if(is.numeric, ~round(., 2)) %>% 
-  summarise(grp.cancer, grupo.trz,
-            DIF = paste0(dif, " (", dif_lb, "-", dif_ub, ")"))
-
-colnames(tab3) <- c("", "Health Services Group","Count Reduction (CI 95%)")
-
-write_csv2(tab3, file = "C:/Users/sflor/Dropbox/Trabajo/ANID-Covid/Analisis IMED/paper/prestaciones tab3.csv")
-```
-
-Reducción relativa
+Reducción relativa de conteos durante el periodo de pandemia
 
 ```{r}
 tab.agg <- dat.plots.agg %>% 
@@ -244,14 +191,16 @@ tab3 <- dat.plots.type %>%
             DIF = paste0(dif, " (", dif_lb, "-", dif_ub, ")"),
             VAR = paste0(var, "% (", var_lb, "% - ", var_ub, "%)"))
 
-colnames(tab3) <- c("", "Health Services Group","Count Reduction (CI 95%)")
+colnames(tab3) <- c("", "Health Services Group","Absolute Reduction (CI 95%)", "Relative Reduction (CI 95%)")
 
-write_csv2(tab3, file = "C:/Users/sflor/Dropbox/Trabajo/ANID-Covid/Analisis IMED/paper/prestaciones tab3.csv")
+write_csv2(tab3, file = "output/tabs/paper prestaciones tab3.csv")
 ```
 
 ## Tabla 4
 
 ```{r}
+#incompleta
+
 tab.var.age <- dat.plots.agg %>% 
   filter(pandemia == 1,
          mod.int == "Age") %>% 
@@ -360,7 +309,7 @@ colnames(tab.wk.tot) <- c("", "Health Services Group", "2018 Male Mean (SD)", "2
 
 tab1 <- rbind(tab.wk.tot, tab.wk)
 
-write.csv2(tab1, file = "C:/Users/sflor/Dropbox/Trabajo/ANID-Covid/Analisis IMED/paper/prestaciones tab1 sexo.csv")
+write.csv2(tab1, file = "output/tabs/paper prestaciones tab1 sexo.csv")
 
 ```
 
@@ -414,7 +363,7 @@ colnames(tab.wk.tot) <- c("", "Health Services Group", "2018 Private Mean (SD)",
 
 tab1 <- rbind(tab.wk.tot, tab.wk)
 
-write.csv2(tab1, file = "C:/Users/sflor/Dropbox/Trabajo/ANID-Covid/Analisis IMED/paper/prestaciones tab1 prev.csv")
+write.csv2(tab1, file = "output/tabs/paper prestaciones tab1 prev.csv")
 
 ```
 
@@ -437,7 +386,7 @@ tab2 <- tab.models.type %>%
 
 colnames(tab2) <- c("Health Services Group", "pandemic", "pandemic:time_after", "time")
 
-write_csv2(tab2, file = "C:/Users/sflor/Dropbox/Trabajo/ANID-Covid/Analisis IMED/paper/prestaciones tab2 prestacion.csv")
+write_csv2(tab2, file = "output/tabs/paper prestaciones tab2 prestacion.csv")
 
 ```
 
@@ -460,7 +409,7 @@ tab2 <- tab.models.type.prev %>%
 
 colnames(tab2) <- c("Health Services Group", "Insurance", "pandemic", "pandemic:time_after", "time")
 
-write_csv2(tab2, file = "C:/Users/sflor/Dropbox/Trabajo/ANID-Covid/Analisis IMED/paper/prestaciones tab2 prestacion y prevision.csv")
+write_csv2(tab2, file = "output/tabs/paper prestaciones tab2 prestacion y prevision.csv")
 
 ```
 
@@ -483,7 +432,7 @@ tab2 <- tab.models.type.sexo %>%
 
 colnames(tab2) <- c("Health Services Group", "Sex", "pandemic", "pandemic:time_after", "time")
 
-write_csv2(tab2, file = "C:/Users/sflor/Dropbox/Trabajo/ANID-Covid/Analisis IMED/paper/prestaciones tab2 prestacion y sexo.csv")
+write_csv2(tab2, file = "output/tabs/paper prestaciones tab2 prestacion y sexo.csv")
 
 ```
 
@@ -567,7 +516,7 @@ colnames(tab.red.sex) <- c("", "Health Services Group", "Men Count (CI 95%)", "W
                          "Excess impact on women Count (CI 95%)")
 tab.red.sex 
 
-write.csv2(tab.red.sex, file = "C:/Users/sflor/Dropbox/Trabajo/ANID-Covid/Analisis IMED/paper/prestaciones tab3 sexo.csv", sep = ";", dec = ".")
+write.csv2(tab.red.sex, file = "output/tabs/paper prestaciones tab3 sexo.csv", sep = ";", dec = ".")
 ```
 
 ```{r TAB3 REDUCCION POR PREVISION, include=T}
@@ -621,7 +570,7 @@ colnames(tab.red.prev) <- c("", "Health Services Group", "Private Count (CI 95%)
 
 tab.red.prev  
 
-write.csv2(tab.red.prev, file = "C:/Users/sflor/Dropbox/Trabajo/ANID-Covid/Analisis IMED/paper/prestaciones tab3 prev.csv")
+write.csv2(tab.red.prev, file = "output/tabs/paper prestaciones tab3 prev.csv")
 ```
 
 ```{r TAB3 REDUCCION POR Edad, include=T}
@@ -659,7 +608,7 @@ colnames(tab.red.prev) <- c("", "Health Services Group", "Private Count (CI 95%)
 
 tab.red.prev  
 
-write.csv2(tab.red.prev, file = "C:/Users/sflor/Dropbox/Trabajo/ANID-Covid/Analisis IMED/paper/prestaciones tab3 prev.csv")
+write.csv2(tab.red.prev, file = "output/tabs/paper prestaciones tab3 prev.csv")
 ```
 
 
