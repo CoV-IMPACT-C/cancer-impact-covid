@@ -1,0 +1,307 @@
+---
+title: "Migración ruts a FONASA MLE - cáncer"
+output: 
+---
+
+```{r LIBRERIAS, message=FALSE, warning=FALSE, include=FALSE}
+library(data.table)
+library(tidyverse)
+library(MASS)
+library(sjPlot)
+```
+
+# 1. Datos
+
+```{r LOAD AND PREPARE SAVED DATA GROUPED BY WEEK}
+load("C:/Users/sflor/Dropbox/Trabajo/ANID-Covid/Analisis IMED/prestaciones/output/DB/DB para modelos.RData")
+
+#prest <- levels(dat[,grupo.trz])
+#prest.sexo <- as.character(unique(dat[, .(grupo.trz = grupo.trz, grp.cancer = grp.cancer)][
+#                            !(grp.cancer %in% c("Prostate Cancer", "Breast Cancer", 
+#                                                "Cervical Cancer"))][
+#                                       order(grupo.trz)  ][ , grupo.trz]))
+dat <- dat[
+  prevision %in% c("FONASA", "ISAPRE") ][
+  , week := as.factor(week)][
+#  , pandemia := pandemic][, pandemic := NULL][
+  , prevision := factor(prevision, labels = c("Public", "Private"))]
+
+# dat.ag[,.(date_wk, year, week, time, time_after, pandemia)][order(time)] %>% unique()
+```
+
+```{r}
+dat_first <- dat[
+  , new_rut := !duplicated(rutbeneficiario) ][
+  new_rut == T ][
+  , count_new := sum(new_rut), by = .(week, year, prevision)  ][
+  , .(date_wk, week, year, prevision, count_new)  ] %>% 
+  unique()
+```
+
+```{r}
+dat_first %>% 
+  filter(!is.na(year)) %>% 
+  mutate(year = as.factor(year)) %>% 
+  ggplot(aes(x = week, y = count_new, color = prevision)) +
+  geom_line(aes(group = prevision:year)) +
+  geom_point(aes()) +
+  facet_grid(year ~ .) +
+  scale_x_discrete(breaks = seq(11, 53, 12)) +
+  geom_vline(xintercept = 11, linetype = "dotted", color = "red") +
+  labs(x = "Week",
+       y = "New persons in private sector",
+       color = "Insurance",
+       title = "New persons acceding to private sector per week by insurance and year")
+```
+# Modelos
+
+```{r}
+dmodel <- dat_first[
+  year == 2020 ][  
+  , pandemic := ifelse(as.numeric(week) < 11, 0, 1)  ][
+  , time := as.numeric(factor(week, labels = 0:51)) - 1 ][
+  , time_after := ifelse(time < 11, 0, (time - 10 ))  ][
+  order(as.numeric(week))  ]
+```
+
+```{r}
+m1 <- glm.nb(count_new ~ prevision + pandemic + time + pandemic:time_after, data = dmodel)
+
+summary(m1)
+
+exp(m1$coefficients)
+```
+
+```{r}
+dmodel2 <- dat_first[
+  year != 2018 ][
+  , pandemic := ifelse(date_wk < as.Date("2020-03-15"), 0, 1)  ][
+  , time := as.numeric(factor(date_wk, labels = 0:103)) - 1  ][
+  , time_after := ifelse(time < 62, 0, (time - 62))  ][
+  order(as.numeric(date_wk))  ]
+```
+
+```{r MODELO AGREGADO ADITIVO Y POR SUBSETS, message=F}
+sets <- list(
+  dmodel2,
+  dmodel2[prevision == "Public"],
+  dmodel2[prevision == "Private"]
+  )
+
+formulas <- list(
+  as.formula(count_new ~ prevision + pandemic + time + pandemic:time_after),
+  as.formula(count_new ~ pandemic + time + pandemic:time_after),
+  as.formula(count_new ~ pandemic + time + pandemic:time_after)
+)
+
+models <- list()
+
+for (i in 1:3){
+  
+  sets[[i]] <- sets[[i]] %>% 
+    group_by(prevision, time, pandemic, time_after) %>% 
+    summarise(count_new = sum(count_new))
+
+  models[[i]] <- glm.nb(formulas[[i]], data = sets[[i]])
+  
+}
+```
+
+```{r}
+tab.models <- data.table()
+
+for (i in 1:3){
+
+  summ <- summary(models[[i]])
+  mod.res <- as.data.frame(summ$coefficients)
+  mod.res$Model <- i
+  mod.res$Vars <- rownames(summ$coefficients)
+
+  tab.models <- rbind(tab.models, mod.res)
+  
+}
+
+rm(summ, mod.res, i)
+
+confint.models <- data.table()
+
+for (i in 1:3){
+  
+  conf <- confint(models[[i]])
+  conf.res <- as.data.frame(conf)
+  conf.res$Model <- i
+  conf.res$Vars <- rownames(conf)
+
+  confint.models <- rbind(confint.models, conf.res)
+  
+}
+
+rm(conf, conf.res, i)
+
+tab.models <- cbind(tab.models, confint.models[,c(1:2)])
+
+invlink <- models[[1]]$family$linkinv
+
+. <- tab.models[
+  , IRR := invlink(Estimate) ][
+  , IC_lower := invlink(`2.5 %`) ][
+  , IC_upper := invlink(`97.5 %`) ]
+
+tab.models <- .
+```
+
+```{r}
+tab.plot <- tab.models %>% 
+  filter(Vars %in% c("pandemic", "pandemic:time_after", "time", "previsionPrivate")) %>% 
+  mutate(Mod.int = as.factor(Model),
+         Mod.int = factor(Mod.int, labels = c("Overall", rep("Insurance", 2))),
+         Model = as.factor(Model),
+         Model = factor(Model, labels = c("Overall", "Public", "Private"))) %>% 
+  ggplot(aes(x = IRR, y = Vars)) +
+  geom_point(aes(color = Model)) +
+  geom_errorbarh(aes(xmin = IC_lower, xmax = IC_upper, color = Model), alpha = .25) +
+  geom_vline(xintercept = 1, alpha = .3, linetype = 2) +
+  facet_grid(. ~ Mod.int, scales = "free_x")
+
+tab.plot
+```
+
+```{r}
+tab.plot <- tab.models %>% 
+  filter(Vars %in% c("pandemic:time_after", "time")) %>% 
+  mutate(Mod.int = as.factor(Model),
+         Mod.int = factor(Mod.int, labels = c("Overall", rep("Insurance", 2))),
+         Model = as.factor(Model),
+         Model = factor(Model, labels = c("Overall", "Public", "Private"))) %>% 
+  ggplot(aes(x = IRR, y = Vars)) +
+  geom_point(aes(color = Model)) +
+  geom_errorbarh(aes(xmin = IC_lower, xmax = IC_upper, color = Model), alpha = .25) +
+  geom_vline(xintercept = 1, alpha = .3, linetype = 2) +
+  facet_grid(. ~ Mod.int, scales = "free_x")
+
+tab.plot
+```
+
+# Predichos
+
+```{r PREDICTED DB}
+dat.plots.list <- list()
+
+for (i in 1:3) {
+  
+  dat.cf <- sets[[i]]
+  dat.cf$pandemic <- 0
+
+  dat.plots.temp <- sets[[i]]
+
+  ilink <- family(models[[i]])$linkinv
+  
+  pred <- predict(models[[i]], se.fit = T)
+  yhat <- pred$fit
+  se <- pred$se.fit
+  
+  dat.plots.temp$yhat <- ilink(yhat)
+  dat.plots.temp$ub <- ilink(yhat + (1.96*se))
+  dat.plots.temp$lb <- ilink(yhat - (1.96*se))
+  
+  
+  pred.cf <- predict(models[[i]], newdata = dat.cf, se.fit = T)
+  cf <- pred.cf$fit
+  cf.se <- pred.cf$se.fit
+  
+  dat.plots.temp$cf <- ilink(cf)
+  dat.plots.temp$cf_ub <- ilink(cf + (1.96*cf.se))
+  dat.plots.temp$cf_lb <- ilink(cf - (1.96*cf.se))
+  
+  dat.plots.list[[i]] <- dat.plots.temp
+  
+  rm(dat.cf, dat.plots.temp, ilink, pred, yhat, se, pred.cf, cf, cf.se)
+}
+
+```
+
+```{r RECODE AND BIND PREDICTED DB}
+mod <- c("Overall", 
+         rep("Insurance", 2))
+
+for (i in 1:3) {
+
+  dat.plots.list[[i]]$mod.int <- mod[i]
+  
+}
+
+dat.plots <- data.table()
+
+for (i in 1:3){
+  
+  dat.plots <- rbind(dat.plots, dat.plots.list[[i]])
+  
+}
+
+rm(dat.plots.list)
+```
+
+
+```{r predichos vs contrafactual reduccion }
+tab.overall <- dat.plots %>% 
+  filter(pandemic == 1,
+         mod.int == "Overall") %>% 
+  summarise(count = sum(count_new),
+            yhat = sum(yhat),
+            cf = sum(cf),
+            ub = sum(ub),
+            lb = sum(lb),
+            cf_ub = sum(cf_ub),
+            cf_lb = sum(cf_lb),
+            dif = (cf - yhat),
+            dif_ub = (cf_ub - ub),
+            dif_lb = (cf_lb - lb)) %>% 
+  mutate_if(is.numeric, ~round(., 2)) %>% 
+  summarise(count, cf, yhat,
+            DIF = paste0(dif, " (", dif_lb, "-", dif_ub, ")"),
+            VAR = (dif/cf)*100) %>% 
+  mutate(prevision = "All")
+
+
+tab.prev <- dat.plots %>% 
+  filter(pandemic == 1,
+         mod.int == "Insurance") %>% 
+  group_by(prevision) %>% 
+  summarise(count = sum(count_new),
+            yhat = sum(yhat),
+            cf = sum(cf),
+            ub = sum(ub),
+            lb = sum(lb),
+            cf_ub = sum(cf_ub),
+            cf_lb = sum(cf_lb),
+            dif = (cf - yhat),
+            dif_ub = (cf_ub - ub),
+            dif_lb = (cf_lb - lb)) %>% 
+  mutate_if(is.numeric, ~round(., 2)) %>% 
+  summarise(prevision,
+            count, cf, yhat, 
+            DIF = paste0(dif, " (", dif_lb, "-", dif_ub, ")"),
+            VAR = (dif/cf)*100)
+
+tab <- rbind(tab.overall, tab.prev) %>% dplyr::select(prevision, count, cf, yhat, DIF, VAR)
+
+colnames(tab) <- c("Insurance", "Count", "CF", "Y-hat", "New RUTs Reduction (CI 95%)", "Reduction %")
+
+tab
+```
+
+```{r}
+dat.plots %>% 
+  filter(!is.na(year)) %>% 
+  mutate(year = as.factor(year)) %>% 
+  ggplot(aes(x = week, y = count_new, color = prevision)) +
+  geom_line(aes(group = prevision:year)) +
+  geom_point(aes()) +
+  facet_grid(year ~ .) +
+  scale_x_discrete(breaks = seq(11, 53, 12)) +
+  geom_vline(xintercept = 11, linetype = "dotted", color = "red") +
+  labs(x = "Week",
+       y = "New persons in private sector",
+       color = "Insurance",
+       title = "New persons acceding to private sector per week by insurance and year")
+```
