@@ -1,0 +1,459 @@
+---
+title: "Modelos de serie de tiempo interrumpida para caída en prestaciones oncológicas"
+output: 
+---
+
+#
+
+```{r RMD SETTINGS, message=FALSE, warning=FALSE, include=FALSE}
+rm(list = ls()); gc() 
+knitr::opts_knit$set(root.dir = "C:/Users/sflor/Documents/Data IMED/Prestaciones/")
+knitr::opts_chunk$set(include = FALSE,
+                      echo = FALSE,
+                      message = FALSE,
+                      warning = FALSE)
+```
+
+```{r LIBRERIAS, message=FALSE, warning=FALSE, include=FALSE}
+library(data.table)
+library(tidyverse)
+library(MASS)
+library(sjPlot)
+```
+
+# 1. Datos
+
+```{r LOAD AND PREPARE SAVED DATA GROUPED BY WEEK}
+load("C:/Users/sflor/Dropbox/Trabajo/ANID-Covid/Analisis IMED/prestaciones/output/DB/DB para modelos agregada.RData")
+
+prest <- levels(dat.ag[,grupo.trz])
+prest.sexo <- as.character(unique(dat.ag[, .(grupo.trz = grupo.trz, grp.cancer = grp.cancer)][
+                            !(grp.cancer %in% c("Prostate Cancer", "Breast Cancer", 
+                                                "Cervical Cancer"))][
+                                       order(grupo.trz)  ][ , grupo.trz]))
+dat.ag <- dat.ag[
+  , week := as.factor(week)][
+#  date_wk < as.Date("2020-08-24")][
+  !(grupo.trz == prest[5] & edad_cat == "[0,10)")][
+  !(grupo.trz == prest[8] & edad_cat == "[0,10)")][
+  !(grupo.trz == prest[15] & edad_cat %in% c("[0,10)", "[10,20)"))][
+  , pandemia := cuarentenas][, cuarentenas := NULL][
+  , prevision := factor(prevision, labels = c("Public", "Private"))]
+
+# dat.ag[,.(date_wk, year, week, time, time_after, pandemia)][order(time)] %>% unique()
+```
+
+
+# 2. Modelo efectos fijos
+
+```{r MODELO PREVISION POR PRESTACION}
+
+sets <- list()
+
+for (i in levels(dat.ag$prevision)){
+  
+  for (j in prest){
+    
+    sets[[i]][[j]] <- dat.ag[prevision == i][grupo.trz == j]
+  }
+}
+
+
+formulas <- list(
+  as.formula(count ~ edad_cat + sexo + year + week + pandemia + time + pandemia:time_after),
+  as.formula(count ~ edad_cat + year + week + pandemia + time + pandemia:time_after)
+)
+
+
+models <- list()
+
+for (i in levels(dat.ag$prevision)){
+  
+  for (j in 1:17){
+    
+    data <- sets[[i]][[j]]
+    
+    if (unique(data$grupo.trz) %in% prest.sexo){
+      
+      models[[i]][[j]] <- glm.nb(formulas[[1]], data = data)
+  
+    } else {
+      
+      models[[i]][[j]] <- glm.nb(formulas[[2]], data = data)
+      
+    }
+  }
+}
+
+
+# save(models, file = "C:/Users/sflor/Dropbox/Trabajo/ANID-Covid/Analisis IMED/prestaciones/output/modelos/nb sti caida prestaciones/20210128 sti caida prestaciones x prevision.RData" )
+
+# load(file = "C:/Users/sflor/Dropbox/Trabajo/ANID-Covid/Analisis IMED/prestaciones/output/modelos/nb sti caida prestaciones/20210128 sti caida prestaciones x prevision.RData")
+```
+
+## 2.1 Tablas modelos
+
+```{r}
+tab.models <- data.table()
+
+prest.eng <- c("Outpatient Visit", "Antigens\n(Ca 125, Ca 15-3, Ca 19-9, Cea)", "Biopsies", "Neoplastic Cells" , "PET-CT", "FOBT", "Sigmoidoscopy and Colonoscopy", "Cervical Biopsy", "Colposcopy", "Smear (PAP) test", "Upper GI endoscopy ", "Urease test", "Breast US", "Mammography", "Breast MRI", "PSA", "Prostate US")
+
+for (i in levels(dat.ag$prevision)){
+  
+  for (j in 1:17){
+    
+  summ <- summary(models[[i]][[j]])
+  mod.res <- as.data.frame(summ$coefficients)
+  mod.res$Model <- i
+  mod.res$Grupo <- prest.eng[j]
+  mod.res$Vars <- rownames(summ$coefficients)
+
+  tab.models <- rbind(tab.models, mod.res)
+
+  }
+}
+
+rm(summ, mod.res, i)
+
+confint.models <- data.table()
+
+for (i in levels(dat.ag$prevision)){
+  
+  for (j in 1:17){
+  
+  conf <- confint(models[[i]][[j]])
+  conf.res <- as.data.frame(conf)
+  conf.res$Model <- i
+  conf.res$Grupo <- prest.eng[j]
+  conf.res$Vars <- rownames(conf)
+
+  confint.models <- rbind(confint.models, conf.res)
+  
+  }
+}
+ 
+rm(conf, conf.res, i)
+
+tab.models <- cbind(tab.models, confint.models[,c(1:2)])
+
+invlink <- models[[1]][[1]]$family$linkinv
+
+. <- tab.models[
+  , IRR := invlink(Estimate) ][
+  , IC_lower := invlink(`2.5 %`) ][
+  , IC_upper := invlink(`97.5 %`) ]
+
+tab.models <- .
+
+# save(tab.models, file = "C:/Users/sflor/Dropbox/Trabajo/ANID-Covid/Analisis IMED/prestaciones/output/tabs_prestaciones/20210128 coef sti prevision.RData")
+
+# load(file = "C:/Users/sflor/Dropbox/Trabajo/ANID-Covid/Analisis IMED/prestaciones/output/tabs_prestaciones/20210128 coef sti prevision.RData")
+```
+
+## 2.2 Gráfico de coeficientes de modelos
+
+```{r fig.height=10, fig.width=6}
+tab.models %>% 
+  ggplot(aes(x = IRR, y = Vars)) +
+  geom_point()
+```
+
+```{r fig.height=10, fig.width=10}
+tab.plot <- tab.models %>% 
+  filter(Vars %in% c("edad_cat[0,10)", "edad_cat[10,20)", "edad_cat[20,30)", 
+                     "edad_cat[30,40)", "edad_cat[50,60)", "edad_cat[60,70)", "edad_cat[70,80)", 
+                     "sexoFemale", "pandemia", "pandemia:time_after", "time")) %>% 
+  ggplot(aes(x = IRR, y = Vars)) +
+  geom_point(aes(color = Model)) +
+  geom_errorbarh(aes(xmin = IC_lower, xmax = IC_upper, color = Model), alpha = .5) +
+  geom_vline(xintercept = 1, alpha = .3, linetype = 2) +
+  facet_wrap("Grupo", ncol = 6, scales = "free_x") +
+  labs(color = "Insurance") +
+  theme(legend.position = "bottom")
+
+tab.plot
+
+ggsave(plot = tab.plot,
+       filename = "C:/Users/sflor/Dropbox/Trabajo/ANID-Covid/Analisis IMED/prestaciones/output/plots_prestaciones/caida 2020/tab plot inter prev adit.png", 
+       device = "png",
+       dpi = "retina",
+       width = 10, height = 10)
+```
+
+
+# 3. Predicciones
+
+```{r PREDICTED DB}
+dat.plots.list <- list()
+
+for (i in levels(dat.ag$prevision)){
+  
+  for (j in 1:17){
+    
+  dat.cf <- sets[[i]][[j]]
+  dat.cf$pandemia <- 0
+
+  dat.plots.temp <- sets[[i]][[j]]
+
+  ilink <- family(models[[i]][[j]])$linkinv
+  
+  pred <- predict(models[[i]][[j]], se.fit = T)
+  yhat <- pred$fit
+  se <- pred$se.fit
+  
+  dat.plots.temp$yhat <- ilink(yhat)
+  dat.plots.temp$ub <- ilink(yhat + (1.96*se))
+  dat.plots.temp$lb <- ilink(yhat - (1.96*se))
+  
+  
+  pred.cf <- predict(models[[i]][[j]], newdata = dat.cf, se.fit = T)
+  cf <- pred.cf$fit
+  cf.se <- pred.cf$se.fit
+  
+  dat.plots.temp$cf <- ilink(cf)
+  dat.plots.temp$cf_ub <- ilink(cf + (1.96*cf.se))
+  dat.plots.temp$cf_lb <- ilink(cf - (1.96*cf.se))
+  
+  dat.plots.list[[i]][[j]] <- dat.plots.temp
+  
+  rm(dat.cf, dat.plots.temp, ilink, pred, yhat, se, pred.cf, cf, cf.se)
+    
+  }
+}
+```
+
+```{r RECODE AND BIND PREDICTED DB}
+for (i in levels(dat.ag$prevision)){
+  
+  for (j in 1:17){
+    
+  levels(dat.plots.list[[i]][[j]]$grp.cancer) <- c("General Oncological Services", 
+                                                   "Colorectal Cancer", 
+                                                   "Cervical Cancer", "Gastric Cancer", 
+                                                   "Breast Cancer", "Prostate Cancer")
+
+  levels(dat.plots.list[[i]][[j]]$grupo.trz) <- c("Outpatient Visit", "Antigens\n(Ca 125, 
+                                                  Ca 15-3, Ca 19-9, Cea)", 
+                                   "Biopsies",   "Neoplastic Cells" , "PET-CT", 
+                                 "FOBT", "Sigmoidoscopy and Colonoscopy", 
+                                 "Cervical Biopsy", "Colposcopy", "Smear (PAP) test", 
+                                 "Upper GI endoscopy ", "Urease test", 
+                                 "Breast US", "Mammography", "Breast MRI",
+                                 "PSA", "Prostate US")
+  }
+}
+
+dat.plots <- data.table()
+
+for (i in levels(dat.ag$prevision)){
+  
+  for (j in 1:17){
+    
+  dat.plots <- rbind(dat.plots, dat.plots.list[[i]][[j]])
+  }
+}
+
+rm(dat.plots.list)
+
+# save(dat.plots, file = "C:/Users/sflor/Dropbox/Trabajo/ANID-Covid/Analisis IMED/prestaciones/output/DB/20210129 DB predichos nb sti x prevision.RData")
+
+# load("C:/Users/sflor/Dropbox/Trabajo/ANID-Covid/Analisis IMED/prestaciones/output/DB/20210129 DB predichos nb sti x prevision.RData")
+```
+
+# 4. Plots
+
+## 4.1 Serie completa
+
+```{r fig.height=12, fig.width=8}
+g1.a <- dat.plots %>% 
+  group_by(date_wk, grupo.trz) %>% summarise(count = sum(count),
+                                  yhat = sum(yhat),
+                                  cf = sum(cf),
+                                  ub = sum(ub),
+                                  lb = sum(lb),
+                                  cf_ub = sum(cf_ub),
+                                  cf_lb = sum(cf_lb)) %>% 
+  ggplot(aes(x = date_wk, y = count)) +
+  geom_point(alpha = .3) +
+  geom_line(aes(x = date_wk, y = yhat)) +
+  geom_ribbon(aes(ymin = lb, ymax = ub), alpha = .3) +
+  geom_line(aes(x = date_wk, y = cf), linetype = 2, size = .3) +
+  geom_ribbon(aes(ymin = cf_lb, ymax = cf_ub), alpha = .15) +
+  
+  facet_wrap("grupo.trz", scales = "free", ncol = 3) +
+  
+  ylim(0, NA) +
+  theme_minimal() + 
+  labs(y = "Count", x = "Date", 
+       title = "Additive model") +
+  geom_vline(xintercept = as.Date("2020-03-15"), linetype = "dotted", color = "red") +
+  theme(legend.position = "bottom",
+        axis.title = element_text(size = 7),
+        axis.text = element_text(size = 6),
+        plot.subtitle = element_text(size = 10),
+        plot.title = element_text(size = 12))
+  
+g1.a
+```
+
+```{r fig.height=12, fig.width=8}
+g1.c <- dat.plots %>% 
+  group_by(date_wk, prevision, grupo.trz) %>% summarise(count = sum(count),
+                                  yhat = sum(yhat),
+                                  cf = sum(cf),
+                                  ub = sum(ub),
+                                  lb = sum(lb),
+                                  cf_ub = sum(cf_ub),
+                                  cf_lb = sum(cf_lb)) %>% 
+  ggplot(aes(x = date_wk, y = count)) +
+  geom_point(aes(color = prevision), alpha = .3) +
+  geom_line(aes(x = date_wk, y = yhat, color = prevision)) +
+  geom_ribbon(aes(ymin = lb, ymax = ub, fill = prevision), alpha = .3) +
+  geom_line(aes(x = date_wk, y = cf, color = prevision), linetype = 2, size = .3) +
+  geom_ribbon(aes(ymin = cf_lb, ymax = cf_ub, fill = prevision), alpha = .15) +
+  
+  facet_grid(grupo.trz ~ ., scales = "free") +
+  
+  ylim(0, NA) +
+  theme_minimal() + 
+  labs(y = "Count", x = "Date", fill = "Previsión", color = "Previsión",
+       title = "by insurance") +
+  geom_vline(xintercept = as.Date("2020-03-15"), linetype = "dotted", color = "red") +
+  theme(legend.position = "bottom",
+        axis.title = element_text(size = 7),
+        axis.text = element_text(size = 6),
+        plot.subtitle = element_text(size = 10),
+        plot.title = element_text(size = 12))
+  
+g1.c
+```
+
+## 4.2 Exposición
+
+```{r fig.height=8, fig.width=6, warning=F}
+g2.a <- dat.plots %>% 
+  mutate(week = as.numeric(week)) %>% 
+ mutate(exposicion = ifelse(year == 2020, "2020", "2018-2019"),
+         cf = ifelse(exposicion == "2020" & pandemia != 0, cf, NA),
+         cf_ub = ifelse(exposicion == "2020" & pandemia != 0, cf_ub, NA),
+         cf_lb = ifelse(exposicion == "2020" & pandemia != 0, cf_lb, NA) ) %>% 
+  group_by(week, year, exposicion, grupo.trz) %>% summarise(count = sum(count),
+                                                 yhat = sum(yhat),
+                                                 cf = sum(cf),
+                                                 ub = sum(ub),
+                                                 lb = sum(lb),
+                                                 cf_ub = sum(cf_ub),
+                                                 cf_lb = sum(cf_lb) ) %>% 
+  group_by(week, exposicion, grupo.trz)%>% summarise(count = mean(count),
+                                          yhat = mean(yhat),
+                                          cf = sum(cf),
+                                          ub = mean(ub),
+                                          lb = mean(lb),
+                                          cf_ub = mean(cf_ub),
+                                          cf_lb = mean(cf_lb) ) %>% 
+  
+  ggplot(aes(x = week, y = count, fill = exposicion))+
+  
+  geom_point(alpha = .3, aes(color = exposicion), size = 1.5) +
+  geom_line(aes(x = week, y = yhat, color = exposicion, linetype = "Observed")) +
+  geom_ribbon(aes(ymin = lb, ymax = ub, group = exposicion), alpha = .3) +
+
+  geom_line(aes(x = week, y = cf, color = exposicion, linetype = "Predicted counterfactual"), 
+            size = .3, name = "bla") +
+  geom_ribbon(aes(ymin = cf_lb, ymax = cf_ub, group = exposicion), alpha = .15) +
+  scale_linetype_manual(values = c("Observed" = 1, "Predicted counterfactual" = 2)) +
+  
+  facet_wrap("grupo.trz", scales = "free", ncol = 3) +
+  
+  ylim(0, NA) +
+  theme_minimal() + 
+  labs(y = "Count", x = "Week", fill = "Period", color = "Period", linetype = "Scenario",
+       title = "Health Services associated with Cancer") +
+  geom_vline(xintercept = 11, linetype = "dotted", color = "red") + 
+  theme(legend.position = "bottom",
+        axis.title = element_text(size = 7),
+        axis.text = element_text(size = 6),
+        plot.subtitle = element_text(size = 10),
+        plot.title = element_text(size = 12))
+
+g2.a
+```
+
+```{r fig.height=12, fig.width=5, warning=F}
+g2.c <- dat.plots %>% 
+  mutate(week = as.numeric(week)) %>% 
+  mutate(exposicion = ifelse(year == 2020, "2020", "2018-2019"),
+         cf = ifelse(exposicion == "2020" & pandemia != 0, cf, NA),
+         cf_ub = ifelse(exposicion == "2020" & pandemia != 0, cf_ub, NA),
+         cf_lb = ifelse(exposicion == "2020" & pandemia != 0, cf_lb, NA)) %>% 
+  group_by(week, year, exposicion, prevision, grupo.trz) %>% summarise(count = sum(count),
+                                                 yhat = sum(yhat),
+                                                 cf = sum(cf),
+                                                 ub = sum(ub),
+                                                 lb = sum(lb),
+                                                 cf_ub = sum(cf_ub),
+                                                 cf_lb = sum(cf_lb) ) %>% 
+  group_by(week, exposicion, prevision, grupo.trz)%>% summarise(count = mean(count),
+                                          yhat = mean(yhat),
+                                          cf = sum(cf),
+                                          ub = mean(ub),
+                                          lb = mean(lb),
+                                          cf_ub = mean(cf_ub),
+                                          cf_lb = mean(cf_lb) ) %>% 
+  ggplot(aes(x = week, y = count, fill = exposicion))+
+  
+  geom_point(alpha = .3, aes(color = exposicion), size = 1.5) +
+  geom_line(aes(x = week, y = yhat, color = exposicion, linetype = "Observed")) +
+  geom_ribbon(aes(ymin = lb, ymax = ub, group = exposicion), alpha = .3) +
+
+  geom_line(aes(x = week, y = cf, color = exposicion, linetype = "Predicted counterfactual"), size = .3, name = "bla") +
+  geom_ribbon(aes(ymin = cf_lb, ymax = cf_ub, group = exposicion), alpha = .15) +
+  scale_linetype_manual(values = c("Observed" = 1, "Predicted counterfactual" = 2)) +
+  
+  facet_grid(grupo.trz ~ prevision, scales = "free") + 
+  
+  ylim(0, NA) +
+  theme_minimal() + 
+  labs(y = "Count", x = "Week", fill = "Period", color = "Period", linetype = "Scenario",
+       title = "Health Services associated with Cancer",
+       subtitle = "by insurance") +
+  geom_vline(xintercept = 11, linetype = "dotted", color = "red") + 
+  theme(legend.position = "bottom",
+        axis.title = element_text(size = 7),
+        axis.text = element_text(size = 6),
+        plot.subtitle = element_text(size = 10),
+        plot.title = element_text(size = 12))
+
+g2.c
+```
+
+
+# Guardar gráficos
+
+```{r}
+ggsave(plot = g1.a,
+       filename = "C:/Users/sflor/Dropbox/Trabajo/ANID-Covid/Analisis IMED/prestaciones/output/plots_prestaciones/caida 2020/serie completa inter prev adit.png", 
+       device = "png",
+       dpi = "retina",
+       width = 8, height = 12)
+
+ggsave(plot = g1.c,
+       filename = "C:/Users/sflor/Dropbox/Trabajo/ANID-Covid/Analisis IMED/prestaciones/output/plots_prestaciones/caida 2020/serie completa inter prev prev.png", 
+       device = "png",
+       dpi = "retina",
+       width = 8, height = 12)
+```
+
+```{r}
+ggsave(plot = g2.a,
+       filename = "C:/Users/sflor/Dropbox/Trabajo/ANID-Covid/Analisis IMED/prestaciones/output/plots_prestaciones/caida 2020/serie 2020 vs anterior inter prev adit.png", 
+       device = "png",
+       dpi = "retina",
+       width = 8, height = 12)
+
+ggsave(plot = g2.c,
+       filename = "C:/Users/sflor/Dropbox/Trabajo/ANID-Covid/Analisis IMED/prestaciones/output/plots_prestaciones/caida 2020/serie 2020 vs anterior inter prev prev.png", 
+       device = "png",
+       dpi = "retina",
+       width = 12, height = 12)
+```
