@@ -19,7 +19,7 @@ options(future.globals.maxSize = Inf)
 ```
 
 ```{r SELECCION PRESTACIONES}
-prestaciones <- fread("C:/Users/sflor/Documents/Data IMED/Diccionarios/dom_codprestacion_000", encoding = "UTF-8")
+prestaciones <- fread("input/dom_codprestacion_000", encoding = "UTF-8")
 
 trazadoras <- data.table(
   cod_prest = c(c(101211, 101331, 101821, 101830, 101831, 101836,
@@ -66,51 +66,48 @@ prestaciones <- trazadoras[prestaciones, on = "cod_prest"]
 
 trazadoras <- trazadoras[, codprestacion := cod_prest][, cod_prest := NULL]
 
-save(prestaciones, file = "C:/Users/sflor/Dropbox/Trabajo/ANID-Covid/Analisis IMED/prestaciones/output/DB/prestaciones.RData")
-save(trazadoras, file = "C:/Users/sflor/Dropbox/Trabajo/ANID-Covid/Analisis IMED/prestaciones/output/DB/trazadoras.RData")
+save(prestaciones, file = "output/DB/prestaciones.RData")
+save(trazadoras, file = "output/DB/trazadoras.RData")
 ```
 
 ```{r LOAD DATA YEAR, message=F}
-path_to_files <- "C:/Users/sflor/Documents/Data IMED/Prestaciones"
+path_to_files <- "C:/Users/sflor/Documents/Data IMED/Prestaciones" #original data, cant be shared
 
 list_files <- list.files(path = path_to_files, 
                          pattern = "txb_resumenprestacion_u2020", 
                          full.names = TRUE) 
 
-system.time(dat.2020 <- csv_to_disk.frame(infile = list_files,
+dat.2020 <- csv_to_disk.frame(infile = list_files,
                                      backend = "data.table",
-                                     #colClasses = list(character = c("coditem")),
                                      select = c("fecemision", "codprestacion", 
                                                 "sexobeneficiario", "edadbeneficiario", 
-                                                "codfinanciador", "rutbeneficiario")))
+                                                "codfinanciador", "rutbeneficiario"))
 
 list_files <- list.files(path = path_to_files, 
                          pattern = "txb_resumenprestacion_u2019", 
                          full.names = TRUE) 
 
-system.time(dat.2019 <- csv_to_disk.frame(infile = list_files,
+dat.2019 <- csv_to_disk.frame(infile = list_files,
                                      backend = "data.table",
-                                     #colClasses = list(character = c("coditem") ),
                                      select = c("fecemision", "codprestacion", 
                                                 "sexobeneficiario", "edadbeneficiario", 
-                                                "codfinanciador", "rutbeneficiario")))
+                                                "codfinanciador", "rutbeneficiario"))
 
 list_files <- list.files(path = path_to_files, 
                          pattern = "txb_resumenprestacion_u2018", 
                          full.names = TRUE) 
 
-system.time(dat.2018 <- csv_to_disk.frame(infile = list_files,
+dat.2018 <- csv_to_disk.frame(infile = list_files,
                                      backend = "data.table",
-                                     #colClasses = list(character = c("coditem") ),
                                      select = c("fecemision", "codprestacion", 
                                                 "sexobeneficiario", "edadbeneficiario", 
-                                                "codfinanciador", "rutbeneficiario")))
+                                                "codfinanciador", "rutbeneficiario"))
 
 rm(list_files, path_to_files)
 ```
 
 ```{r CLEAN DATA, message=F, warning=F}
-load("C:/Users/sflor/Dropbox/Trabajo/ANID-Covid/Analisis IMED/prestaciones/output/DB/trazadoras.RData")
+load("output/DB/trazadoras.RData")
 
 . <- dat.2018[
     
@@ -192,7 +189,7 @@ dat.ind <- full_join(dat.ind, trazadoras)
   
 dat <- .
 
-save(dat, file = "C:/Users/sflor/Dropbox/Trabajo/ANID-Covid/Analisis IMED/prestaciones/output/DB/DB para modelos.RData")
+save(dat, file = "output/DB/DB para modelos.RData") #data in individual level, cant be shared
 
 #rm(trazadoras, dat.2018.dt, dat.2019.dt, dat.2020.dt, dat.ind)
 ```
@@ -202,7 +199,6 @@ Generamos una nueva base de datos que agrupa el conteo de ruts (individuos) por 
 ```{r GROUP DATA}
 . <- dat[
   # FILTRO
-  #  date_wk < as.Date("2020-08-31")  ][
     !( (grupo.trz %in% c("Screening Cáncer Mamario (Ecografía mamaria)", 
                          "Screening Cáncer Mamario (Mamografía)", 
                          "Screening Cáncer Mamario (Resonancia magnética de mama)", 
@@ -240,11 +236,11 @@ dat.ag$grp.cancer <- factor(dat.ag$grupo.trz,
                                           "Breast Cancer", "Breast Cancer", "Breast Cancer",
                                           "Prostate Cancer", "Prostate Cancer"))
 
-save(dat.ag, file = "C:/Users/sflor/Dropbox/Trabajo/ANID-Covid/Analisis IMED/prestaciones/output/DB/DB para modelos agregada.RData")
+save(dat.ag, file = "output/DB/DB para modelos agregada.RData")
 
 ```
 
 ```{r}
-load("C:/Users/sflor/Dropbox/Trabajo/ANID-Covid/Analisis IMED/prestaciones/output/DB/DB para modelos agregada.RData")
+load("output/DB/DB para modelos agregada.RData") #aggregated data
 ```
 
