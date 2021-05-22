@@ -6,27 +6,18 @@ output:
 ```{r LIBRERIAS, message=FALSE, warning=FALSE, include=FALSE}
 library(data.table)
 library(tidyverse)
-library(MASS)
-library(sjPlot)
 ```
 
 # 1. Datos
 
 ```{r LOAD AND PREPARE SAVED DATA GROUPED BY WEEK}
-load("C:/Users/sflor/Dropbox/Trabajo/ANID-Covid/Analisis IMED/prestaciones/output/DB/DB para modelos.RData")
+load("output/DB/DB para modelos.RData") #individual data, cant be shared
 
-#prest <- levels(dat[,grupo.trz])
-#prest.sexo <- as.character(unique(dat[, .(grupo.trz = grupo.trz, grp.cancer = grp.cancer)][
-#                            !(grp.cancer %in% c("Prostate Cancer", "Breast Cancer", 
-#                                                "Cervical Cancer"))][
-#                                       order(grupo.trz)  ][ , grupo.trz]))
 dat <- dat[
   prevision %in% c("FONASA", "ISAPRE") ][
   , week := as.factor(week)][
-#  , pandemia := pandemic][, pandemic := NULL][
   , prevision := factor(prevision, labels = c("Public", "Private"))]
 
-# dat.ag[,.(date_wk, year, week, time, time_after, pandemia)][order(time)] %>% unique()
 ```
 
 ```{r}
