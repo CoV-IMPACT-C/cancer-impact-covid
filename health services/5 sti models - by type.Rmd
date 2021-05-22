@@ -5,15 +5,6 @@ output:
 
 #
 
-```{r RMD SETTINGS, message=FALSE, warning=FALSE, include=FALSE}
-rm(list = ls()); gc() 
-knitr::opts_knit$set(root.dir = "C:/Users/sflor/Documents/Data IMED/Prestaciones/")
-knitr::opts_chunk$set(include = FALSE,
-                      echo = FALSE,
-                      message = FALSE,
-                      warning = FALSE)
-```
-
 ```{r LIBRERIAS, message=FALSE, warning=FALSE, include=FALSE}
 library(data.table)
 library(tidyverse)
@@ -24,7 +15,7 @@ library(sjPlot)
 # 1. Datos
 
 ```{r LOAD AND PREPARE SAVED DATA GROUPED BY WEEK}
-load("C:/Users/sflor/Dropbox/Trabajo/ANID-Covid/Analisis IMED/prestaciones/output/DB/DB para modelos agregada.RData")
+load("output/DB/DB para modelos agregada.RData")
 
 prest <- levels(dat.ag[,grupo.trz])
 prest.sexo <- as.character(unique(dat.ag[, .(grupo.trz = grupo.trz, grp.cancer = grp.cancer)][
@@ -33,14 +24,12 @@ prest.sexo <- as.character(unique(dat.ag[, .(grupo.trz = grupo.trz, grp.cancer =
                                        order(grupo.trz)  ][ , grupo.trz]))
 dat.ag <- dat.ag[
   , week := as.factor(week)][
-#  date_wk < as.Date("2020-08-24")][
   !(grupo.trz == prest[5] & edad_cat == "[0,10)")][
   !(grupo.trz == prest[8] & edad_cat == "[0,10)")][
   !(grupo.trz == prest[15] & edad_cat %in% c("[0,10)", "[10,20)"))][
   , pandemia := cuarentenas][, cuarentenas := NULL][
   , prevision := factor(prevision, labels = c("Public", "Private"))]
 
-# dat.ag[,.(date_wk, year, week, time, time_after, pandemia)][order(time)] %>% unique()
 ```
 
 
@@ -70,12 +59,15 @@ for (i in 1:17){
 }
 
 
-# save(models, file = "C:/Users/sflor/Dropbox/Trabajo/ANID-Covid/Analisis IMED/prestaciones/output/modelos/nb sti caida prestaciones/20210310 sti caida prestaciones x prestacion.RData" )
+save(models, file = "output/models/sti x prestacion.RData" )
 
-# load(file = "C:/Users/sflor/Dropbox/Trabajo/ANID-Covid/Analisis IMED/prestaciones/output/modelos/nb sti caida prestaciones/20210310 sti caida prestaciones x prestacion.RData")
 ```
 
 ## 2.1 Tablas modelos
+
+```{r}
+load(file = "output/models/sti x prestacion.RData")
+```
 
 ```{r}
 tab.models <- data.table()
@@ -121,12 +113,15 @@ invlink <- models[[1]]$family$linkinv
 
 tab.models <- .
 
-# save(tab.models, file = "C:/Users/sflor/Dropbox/Trabajo/ANID-Covid/Analisis IMED/prestaciones/output/tabs_prestaciones/20210310 coef sti prestacion.RData")
+save(tab.models, file = "output/tabs/coef sti prestacion.RData")
 
-# load(file = "C:/Users/sflor/Dropbox/Trabajo/ANID-Covid/Analisis IMED/prestaciones/output/tabs_prestaciones/20210310 coef sti prestacion.RData")
 ```
 
 ## 2.2 Gráfico de coeficientes de modelos
+
+```{r}
+load(file = "output/tabs/coef sti prestacion.RData")
+```
 
 ```{r fig.height=10, fig.width=6}
 tab.models %>% 
@@ -149,7 +144,7 @@ tab.plot <- tab.models %>%
 tab.plot
 
 ggsave(plot = tab.plot,
-       filename = "C:/Users/sflor/Dropbox/Trabajo/ANID-Covid/Analisis IMED/prestaciones/output/plots_prestaciones/caida 2020/tab plot by prestacion.png", 
+       filename = "output/plots/tab plot by prestacion.png", 
        device = "png",
        dpi = "retina",
        width = 10, height = 10)
@@ -221,12 +216,15 @@ for (i in 1:17){
 
 rm(dat.plots.list)
 
-# save(dat.plots, file = "C:/Users/sflor/Dropbox/Trabajo/ANID-Covid/Analisis IMED/prestaciones/output/DB/20210310 DB predichos nb sti x prestacion.RData")
+save(dat.plots, file = "output/DB/DB predichos nb sti x prestacion.RData")
 
-# load("C:/Users/sflor/Dropbox/Trabajo/ANID-Covid/Analisis IMED/prestaciones/output/DB/20210310 DB predichos nb sti x prestacion.RData")
 ```
 
 # 4. Plots
+
+```{r}
+load("output/DB/DB predichos nb sti x prestacion.RData")
+```
 
 ## 4.1 Serie completa
 
@@ -319,13 +317,13 @@ g2.a
 
 ```{r}
 ggsave(plot = g1.a,
-       filename = "C:/Users/sflor/Dropbox/Trabajo/ANID-Covid/Analisis IMED/prestaciones/output/plots_prestaciones/caida 2020/serie completa by prestacion.png", 
+       filename = "output/plots/serie completa by prestacion.png", 
        device = "png",
        dpi = "retina",
        width = 8, height = 12)
 
 ggsave(plot = g2.a,
-       filename = "C:/Users/sflor/Dropbox/Trabajo/ANID-Covid/Analisis IMED/prestaciones/output/plots_prestaciones/caida 2020/serie 2020 vs anterior by prestacion.png", 
+       filename = "output/plots/serie 2020 vs anterior by prestacion.png", 
        device = "png",
        dpi = "retina",
        width = 8, height = 12)
