@@ -20,7 +20,7 @@ prest <- c("Oncology Consultations", "Antigens", "Biopsy", "Neoplastic Cells" , 
             "Cervical Biopsy", "Colposcopy", "Papanicolaou", 
             "Esophagoscopy, Gastroduodenoscopy, Yeyuno Ileoscopy", "Ureasa", 
             "Breast Ultrasound", "Mammography", "Breast MRI",
-            "Prostate-Specific Antigen", "Prostate Ultrasoud")
+            "Prostate-Specific Antigen", "Prostate Ultrasound")
 
 prest.sexo <- c("Oncology Consultations", "Antigens", "Biopsy", "Neoplastic Cells" , "Pet Ct", 
             "Occult bleeding", "Sigmoidoscopy and Colonoscopy", 
