@@ -129,13 +129,13 @@ g1.agg <- dat.plots.agg %>%
          caida_rel_ub = caida_abs_ub*100 /cf_ub,
          caida_rel_lb = caida_abs_lb*100 /cf_lb) %>% 
 
-  ggplot(aes(x = week, y = caida_rel)) +
+  ggplot(aes(x = as.numeric(week), y = caida_rel)) +
 
   geom_line() +
-  geom_point(alpha = .3, size = .7) +
-  geom_ribbon(aes(ymin = caida_rel_lb, ymax = caida_rel_ub), alpha = .3) +
+  geom_point(size = .7) +
+  geom_ribbon(aes(ymin = caida_rel_lb, ymax = caida_rel_ub), alpha = .15) +
 
-  scale_x_discrete(breaks = seq(5, 53, 6)) +
+  scale_x_continuous(breaks = seq(5, 53, 6)) +
   theme_minimal() + 
   labs(y = "% diagnostic confirmations reduction", x = "Week", 
        subtitle = "", title = "All cancer diagnostic confirmations") +
@@ -165,15 +165,15 @@ g2.agg <- dat.plots.agg.sexo %>%
   
   ggplot(aes(x = week, y = caida_rel, color = sexo, fill = sexo)) +
 
-  geom_point(alpha = .3, size = .7) +
+  geom_point(size = .7) +
   geom_line(aes(x = week, group = sexo)) +
   geom_ribbon(aes(ymin = caida_rel_lb, ymax = caida_rel_ub, group = sexo), alpha = .15) +
 
   scale_x_discrete(breaks = seq(5, 53, 6)) +
-  theme_minimal() + 
   labs(y = "% diagnostic confirmations reduction", x = "Week", fill = "Sex", color = "Sex", 
        subtitle = "", title = "Cancer diagnostic confirmations by sex") +
   geom_vline(xintercept = 11, linetype = "dotted", color = "red") + 
+  theme_minimal() + 
   theme(legend.position = "right",
         axis.title = element_text(size = 8),
         axis.text = element_text(size = 8),
@@ -192,24 +192,24 @@ g3.agg <- dat.plots.agg.prev %>%
   
   ggplot(aes(x = trimester, color = prevision, fill = prevision)) +
 
-  geom_point(aes(y = caida_rel), alpha = .3, size = .7) +
+  geom_point(aes(y = caida_rel), size = .7) +
   geom_line(aes(x = trimester, y = caida_rel, group = prevision)) +
   geom_ribbon(aes(ymin = caida_rel_lb, ymax = caida_rel_ub, group = prevision), alpha = .15) +
 
-  scale_x_discrete(breaks = seq(5, 53, 6)) +
-  theme_minimal() + 
+  scale_x_discrete(breaks = 1:4) +
   labs(y = "% diagnostic confirmations reduction", x = "Trimester", fill = "Insurance", color = "Insurance", 
        subtitle = "", title = "Cancer diagnostic confirmations by insurance") +
   geom_vline(xintercept = 2, linetype = "dotted", color = "red") + 
+  theme_minimal() + 
   theme(legend.position = "right",
         axis.title = element_text(size = 8),
         axis.text = element_text(size = 8),
         plot.subtitle = element_text(size = 8),
         plot.title = element_text(size = 11, face = "bold"))
 
+g1.a <- ggarrange(g1.agg, ncol = 2, widths = c(4,1))
 
-
-g1 <- ggarrange(g1.agg, g2.agg, g3.agg, ncol = 1)
+g1 <- ggarrange(g1.a, g2.agg, g3.agg, ncol = 1)
 g1
 
 ggsave(plot = g1,
