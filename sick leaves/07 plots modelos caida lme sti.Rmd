@@ -115,7 +115,7 @@ for (i in 1:17){
   theme_minimal() +
   theme(panel.grid.minor.x = element_blank())+
   labs(y = "Count", x = "Week", fill = "Period", color = "Period", linetype = "Scenario",
-       subtitle = paste0(levels(dat.plots.type$Cancer_type)[i], " cancer"), title = "") +
+       subtitle = paste0(levels(dat.plots.type$Cancer_type)[i], " Cancer"), title = "") +
   geom_vline(xintercept = 11, linetype = "dotted", color = "red") + 
   theme(legend.position = "bottom",
         axis.title = element_text(size = 7),
@@ -231,7 +231,7 @@ for (i in 1:17){
   theme_minimal() + 
   labs(y = "Count", x = "Week", fill = "Period", color = "Period", linetype = "Scenario",
        title = "", 
-       subtitle = paste0(levels(dat.plots.type.prev$Cancer_type)[i], " cancer")) +
+       subtitle = paste0(levels(dat.plots.type.prev$Cancer_type)[i], " Cancer")) +
   theme(panel.grid.minor.x = element_blank())+
   geom_vline(xintercept = 11, linetype = "dotted", color = "red") + 
   theme(legend.position = "bottom",
@@ -349,7 +349,7 @@ for (i in 1:12){
   theme_minimal() + 
   labs(y = "Count", x = "Week", fill = "Period", color = "Period", linetype = "Scenario",
        title = "", 
-       subtitle = paste0(levels(dat.plots.type.sexo$Cancer_type)[i], " cancer")) +
+       subtitle = paste0(levels(dat.plots.type.sexo$Cancer_type)[i], " Cancer")) +
   theme(panel.grid.minor.x = element_blank()) +
   geom_vline(xintercept = 11, linetype = "dotted", color = "red") + 
   theme(legend.position = "bottom",
