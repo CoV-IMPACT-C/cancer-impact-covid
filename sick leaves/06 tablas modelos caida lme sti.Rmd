@@ -1,0 +1,873 @@
+---
+title: "Modelos de serie de tiempo interrumpida para caída en lme oncológicas"
+output: 
+---
+
+```{r RMD SETTINGS, message=FALSE, warning=FALSE, include=FALSE}
+rm(list = ls()); gc() 
+knitr::opts_knit$set(root.dir = "/Users/Fran/Dropbox (Personal)/Analisis IMED/lme")
+knitr::opts_chunk$set(include = FALSE,
+                      echo = FALSE,
+                      message = FALSE,
+                      warning = FALSE)
+```
+
+```{r LIBRERIAS, message=FALSE, warning=FALSE, include=FALSE}
+library(data.table)
+library(tidyverse)
+library(sjPlot)
+```
+
+```{r DATA}
+
+load(file = "/Users/Fran/Dropbox (Personal)/Analisis IMED/lme/output/tab/tab nb sti/20210223 coef sti datos agregados.RData")
+
+tab.models.agg<-tab.models
+
+load(file = "/Users/Fran/Dropbox (Personal)/Analisis IMED/lme/output/tab/tab nb sti/20210322 coef sti por tipo.RData")
+
+tab.models.type<-tab.models
+
+load(file = "/Users/Fran/Dropbox (Personal)/Analisis IMED/lme/output/tab/tab nb sti/20210315 coef sti por tipo y prevision.RData")
+
+tab.models.type.prev<-tab.models
+
+load(file = "/Users/Fran/Dropbox (Personal)/Analisis IMED/lme/output/tab/tab nb sti/20210322 coef sti por tipo y sexo.RData")
+
+tab.models.type.sexo<-tab.models
+
+load(file = "/Users/Fran/Dropbox (Personal)/Analisis IMED/lme/output/DB/20210223 DB predichos nb sti.RData")
+
+dat.plots.agg<-dat.plots
+
+load(file = "/Users/Fran/Dropbox (Personal)/Analisis IMED/lme/output/DB/20210322 DB predichos nb sti por tipo.RData")
+
+dat.plots.type<-dat.plots
+
+load(file = "/Users/Fran/Dropbox (Personal)/Analisis IMED/lme/output/DB/20210315 DB predichos nb sti por tipo y prevision")
+
+dat.plots.type.prev<-dat.plots
+
+load(file = "/Users/Fran/Dropbox (Personal)/Analisis IMED/lme/output/DB/20210322 DB predichos nb sti por tipo y sexo")
+
+dat.plots.type.sexo<-dat.plots
+
+load(file = "/Users/Fran/Dropbox (Personal)/Analisis IMED/lme/output/DB/20210322 DB predichos nb sti nuevos por tipo")
+
+dat.plots.type.new<-dat.plots
+
+load(file = "/Users/Fran/Dropbox (Personal)/Analisis IMED/lme/output/DB/20210322 DB predichos nb sti continuacion por tipo")
+
+dat.plots.type.cont<-dat.plots
+
+load(file = "/Users/Fran/Dropbox (Personal)/Analisis IMED/lme/output/DB/20210503 DB predichos nb sti nuevos.RData")
+
+dat.plots.new<-dat.plots %>% as.data.table()
+
+rm(dat.plots, tab.models)
+```
+
+
+# Tablas
+
+## 1. Tabla 1 - promedio lme semanal por año.
+
+```{r}
+table1_agg <- dat.plots.agg %>% 
+  filter(mod.int == "Additive") %>% 
+  group_by(week, year) %>%
+  summarise(count = sum(count)) %>% 
+  group_by(year) %>%
+  summarise(mean = mean(count),
+            sd = sd(count)) %>% 
+  pivot_wider(names_from = year, values_from = c(mean, sd)) %>% 
+  ungroup() %>% 
+  mutate_if(is.numeric, ~round(., 2)) %>% 
+  summarise(y2018 = paste0(mean_2018, " (", sd_2018, ")"),
+            y2019 = paste0(mean_2019, " (", sd_2019, ")"),
+            y2020 = paste0(mean_2020, " (", sd_2020, ")") ) %>% 
+  mutate(Cancer_type = "All cancers") %>% dplyr::select(Cancer_type, everything())
+
+colnames(table1_agg) <- c("Cancer type", "2018 Mean (SD)", "2019 Mean (SD)", "2020 Mean (SD)")
+
+table1_type <- dat.plots.type %>% 
+  group_by(Cancer_type, week, year) %>%
+  summarise(count = sum(count)) %>% 
+  group_by(Cancer_type, year) %>% 
+  summarise(mean = mean(count),
+            sd = sd(count)) %>% 
+  pivot_wider(id_cols = Cancer_type , names_from = year, values_from = c(mean, sd)) %>% 
+  ungroup() %>% 
+  mutate_if(is.numeric, ~round(., 2)) %>% 
+  summarise(Cancer_type, y2018 = paste0(mean_2018, " (", sd_2018, ")"),
+            y2019 = paste0(mean_2019, " (", sd_2019, ")"),
+            y2020 = paste0(mean_2020, " (", sd_2020, ")") )
+
+colnames(table1_type) <- c("Cancer type", "2018 Mean (SD)", "2019 Mean (SD)", "2020 Mean (SD)")
+
+table1 <- rbind(table1_agg, table1_type)
+
+#write_csv2(table1, file = "/Users/Fran/Dropbox (Personal)/Analisis IMED/lme/paper/210315 lme tab1.csv")
+
+```
+
+### Tabla 1 suplementaria por sexo / previsión
+
+```{r TAB1 LME MEDIAS POR PREVISION, include=T}
+tab.wk <- dat.plots.type.prev %>%
+  mutate(prevision = ifelse(prevision =="ISAPRE", "Private", "Public")) %>% 
+  group_by(Cancer_type, week, year, prevision) %>%
+  summarise(count = sum(count)) %>% 
+  group_by(Cancer_type, year, prevision) %>%
+  summarise(mean = mean(count),
+            sd = sd(count)) %>% 
+  pivot_wider(id_cols = Cancer_type, 
+              names_from = c(year, prevision), values_from = c(mean, sd)) %>% 
+  ungroup() %>% 
+  mutate_if(is.numeric, ~round(., 2)) %>% 
+  summarise(Cancer_type, 
+            y2018pr = paste0(mean_2018_Private, " (", sd_2018_Private, ")"),
+            y2018pu = paste0(mean_2018_Public,  " (", sd_2018_Public,  ")"),
+            y2019pr = paste0(mean_2019_Private, " (", sd_2019_Private, ")"),
+            y2019pu = paste0(mean_2019_Public,  " (", sd_2019_Public,  ")"),
+            y2020pr = paste0(mean_2020_Private, " (", sd_2020_Private, ")"),
+            y2020pu = paste0(mean_2020_Public,  " (", sd_2020_Public,  ")") )
+
+tab.wk.tot <- dat.plots.agg %>%
+  filter(mod.int == "Additive") %>% 
+  mutate(prevision = ifelse(prevision =="ISAPRE", "Private", "Public")) %>% 
+  group_by(week, year, prevision) %>%
+  summarise(count = sum(count)) %>% 
+  group_by(year, prevision) %>%
+  summarise(mean = mean(count),
+            sd = sd(count),
+            Cancer_type = "All cancers") %>% 
+  pivot_wider(id_cols = Cancer_type, 
+              names_from = c(year, prevision), values_from = c(mean, sd)) %>% 
+  ungroup() %>% 
+  mutate_if(is.numeric, ~round(., 2)) %>% 
+  summarise(Cancer_type, 
+            y2018pr = paste0(mean_2018_Private, " (", sd_2018_Private, ")"),
+            y2018pu = paste0(mean_2018_Public,  " (", sd_2018_Public,  ")"),
+            y2019pr = paste0(mean_2019_Private, " (", sd_2019_Private, ")"),
+            y2019pu = paste0(mean_2019_Public,  " (", sd_2019_Public,  ")"),
+            y2020pr = paste0(mean_2020_Private, " (", sd_2020_Private, ")"),
+            y2020pu = paste0(mean_2020_Public,  " (", sd_2020_Public,  ")") )
+
+colnames(tab.wk) <- c("Cancer type", "2018 Private Mean (SD)", "2018 Public Mean (SD)", 
+                      "2019 Private Mean (SD)", "2019 Public Mean (SD)", "2020 Private Mean (SD)", 
+                      "2020 Public Mean (SD)")
+colnames(tab.wk.tot) <- c("Cancer type", "2018 Private Mean (SD)", "2018 Public Mean (SD)", 
+                          "2019 Private Mean (SD)", "2019 Public Mean (SD)", "2020 Private Mean (SD)", 
+                          "2020 Public Mean (SD)")
+
+tab1.prev <- rbind(tab.wk.tot, tab.wk)
+
+write_csv2(tab1.prev, file = "/Users/Fran/Dropbox (Personal)/Analisis IMED/lme/paper/210326 lme tab1 prevision.csv")
+
+```
+
+```{r TAB1 LME MEDIAS POR SEXO, include=T}
+tab.wk <- dat.plots.type.sexo %>%
+  filter(Cancer_type %in% c("Colorectal", "Gastric")) %>%
+  mutate(sexo = ifelse(sexo=="M", "Male", "Female")) %>% 
+  group_by(Cancer_type, week, year, sexo) %>%
+  summarise(count = sum(count)) %>% 
+  group_by(Cancer_type, year, sexo) %>%
+  summarise(mean = mean(count),
+            sd = sd(count)) %>% 
+  pivot_wider(id_cols = Cancer_type, 
+              names_from = c(year, sexo), values_from = c(mean, sd)) %>% 
+  ungroup() %>% 
+  mutate_if(is.numeric, ~round(., 2)) %>% 
+  summarise(Cancer_type, 
+            y2018m = paste0(mean_2018_Male,   " (", sd_2018_Male, ")"),
+            y2018f = paste0(mean_2018_Female, " (", sd_2018_Female,  ")"),
+            y2019m = paste0(mean_2019_Male,   " (", sd_2019_Male, ")"),
+            y2019f = paste0(mean_2019_Female, " (", sd_2019_Female,  ")"),
+            y2020m = paste0(mean_2020_Male,   " (", sd_2020_Male, ")"),
+            y2020f = paste0(mean_2020_Female, " (", sd_2020_Female,  ")") )
+
+aux.tab <- dat.plots.type %>%
+  filter(Cancer_type %in% c("Breast","Cervical","Prostate")) %>% 
+  mutate(sexo = ifelse(sexo=="M", "Male", "Female")) %>% 
+  group_by(Cancer_type, week, year, sexo) %>%
+  summarise(count = sum(count)) %>% 
+  group_by(Cancer_type, year, sexo) %>%
+  summarise(mean = mean(count),
+            sd = sd(count)) %>% 
+  pivot_wider(id_cols = Cancer_type, 
+              names_from = c(year, sexo), values_from = c(mean, sd)) %>% 
+  ungroup() %>% 
+  mutate_if(is.numeric, ~round(., 2)) %>% 
+  summarise(Cancer_type, 
+            y2018m = paste0(mean_2018_Male,   " (", sd_2018_Male, ")"),
+            y2018f = paste0(mean_2018_Female, " (", sd_2018_Female,  ")"),
+            y2019m = paste0(mean_2019_Male,   " (", sd_2019_Male, ")"),
+            y2019f = paste0(mean_2019_Female, " (", sd_2019_Female,  ")"),
+            y2020m = paste0(mean_2020_Male,   " (", sd_2020_Male, ")"),
+            y2020f = paste0(mean_2020_Female, " (", sd_2020_Female,  ")") )
+
+tab.wk <- as.data.table(rbind(tab.wk, aux.tab))[order(Cancer_type)]
+
+tab.wk <- tab.wk[, lapply(.SD, function(x) replace(x, which(x == "NA (NA)"), NA))]
+
+
+tab.wk.tot <- dat.plots.agg %>%
+  filter(mod.int == "Additive") %>% 
+  mutate(sexo = ifelse(sexo=="M", "Male", "Female")) %>% 
+  group_by(week, year, sexo) %>%
+  summarise(count = sum(count)) %>% 
+  group_by(year, sexo) %>%
+  summarise(mean = mean(count),
+            sd = sd(count),
+            Cancer_type = "All cancers") %>% 
+  pivot_wider(id_cols = Cancer_type, 
+              names_from = c(year, sexo), values_from = c(mean, sd)) %>% 
+  ungroup() %>% 
+  mutate_if(is.numeric, ~round(., 2)) %>% 
+  summarise(Cancer_type, 
+            y2018m = paste0(mean_2018_Male,   " (", sd_2018_Male, ")"),
+            y2018f = paste0(mean_2018_Female, " (", sd_2018_Female,  ")"),
+            y2019m = paste0(mean_2019_Male,   " (", sd_2019_Male, ")"),
+            y2019f = paste0(mean_2019_Female, " (", sd_2019_Female,  ")"),
+            y2020m = paste0(mean_2020_Male,   " (", sd_2020_Male, ")"),
+            y2020f = paste0(mean_2020_Female, " (", sd_2020_Female,  ")") )
+ 
+
+colnames(tab.wk) <- c("Cancer type", "2018 Male Mean (SD)", "2018 Female Mean (SD)", 
+                      "2019 Male Mean (SD)", "2019 Female Mean (SD)", "2020 Male Mean (SD)", 
+                      "2020 Female Mean (SD)")
+colnames(tab.wk.tot) <- c("Cancer type", "2018 Male Mean (SD)", "2018 Female Mean (SD)", 
+                          "2019 Male Mean (SD)", "2019 Female Mean (SD)", "2020 Male Mean (SD)", 
+                          "2020 Female Mean (SD)")
+
+tab1.sexo <- rbind(tab.wk.tot, tab.wk)
+
+write_csv2(tab1.sexo, file = "/Users/Fran/Dropbox (Personal)/Analisis IMED/lme/paper/210326 lme tab1 sexo.csv")
+
+```
+
+### Promedio semanal de lme por mes y año
+
+```{r}
+week.mean <- dat.plots.agg %>% 
+  filter(mod.int == "Additive") %>% 
+  mutate(month = lubridate::month(date_wk)) %>% 
+  group_by(week, month, year) %>%
+  summarise(count = sum(count)) %>% 
+  group_by(month, year) %>%
+  summarise(mean = mean(count),
+            sd = sd(count)) %>% 
+  pivot_wider(id_cols = month, names_from = year, values_from = c(mean, sd)) %>% 
+  ungroup() %>% 
+  mutate_if(is.numeric, ~round(., 2)) %>% 
+  summarise(month, 
+            y2018 = paste0(mean_2018, " (", sd_2018, ")"),
+            y2019 = paste0(mean_2019, " (", sd_2019, ")"),
+            y2020 = paste0(mean_2020, " (", sd_2020, ")") )
+
+colnames(week.mean) <- c("Month", "2018 Mean (SD)", "2019 Mean (SD)", "2020 Mean (SD)")
+
+
+```
+
+## 2. Tabla 2 coeficientes - modelos agregados
+
+```{r}
+table2 <- tab.models.agg %>% 
+  filter(Vars %in% c("pandemia", "pandemia:time_after", "time")) %>% 
+  mutate(Mod.int = as.factor(Model),
+         Mod.int = factor(Mod.int, labels = c("Additive", rep("Sex", 2), rep("Insurance", 2), rep("Age", 6))),
+         Model = as.factor(Model),
+         Model = factor(Model, labels = c("Additive", "Female", "Male", "Private", "Public", 
+                                          "[20,30)", "[30,40)", "[40,50)", "[50,60)", "[60,70)", "[70,80)")), 
+         Vars = ifelse(Vars=="pandemia:time_after", "pandemia_time_after", Vars)) %>% 
+  dplyr::select(Model, Vars, IRR, IC_lower, IC_upper) %>% 
+  pivot_wider(id_cols = Model, names_from = Vars, 
+              values_from = c(IRR, IC_lower, IC_upper)) %>% 
+  mutate_if(is.numeric, ~round(., 3)) %>%
+  summarise(Model, 
+            pandemia = paste0(IRR_pandemia, " (", IC_lower_pandemia, "-",
+                                     IC_upper_pandemia, ")"), 
+            pandemia_time_after = paste0(IRR_pandemia_time_after, " (", 
+                                         IC_lower_pandemia_time_after, "-",
+                                         IC_upper_pandemia_time_after, ")"),
+            time = paste0(IRR_time, " (", IC_lower_time, "-",
+                                     IC_upper_time, ")"))
+
+colnames(table2) <- c("Model", "pandemia", "pandemia:time_after", 
+                         "time")
+
+write_csv2(table2, 
+           file = "/Users/Fran/Dropbox (Personal)/Analisis IMED/lme/paper/210315 lme tab2.csv")
+
+```
+
+
+```{r}
+tab2.type <- tab.models.type %>% 
+  filter(Vars %in% c("pandemia", "pandemia:time_after", "time")) %>% 
+  mutate(Vars = ifelse(Vars=="pandemia:time_after", "pandemia_time_after", Vars)) %>% 
+  dplyr::select(Vars, IRR, IC_lower, IC_upper, Grupo) %>% 
+  pivot_wider(id_cols = Grupo, names_from = Vars, 
+              values_from = c(IRR, IC_lower, IC_upper)) %>% 
+  mutate_if(is.numeric, ~round(., 3)) %>%
+  summarise(Grupo, 
+            pandemia = paste0(IRR_pandemia, " (", IC_lower_pandemia, "-",
+                                     IC_upper_pandemia, ")"), 
+            pandemia_time_after = paste0(IRR_pandemia_time_after, " (", 
+                                         IC_lower_pandemia_time_after, "-",
+                                         IC_upper_pandemia_time_after, ")"),
+            time = paste0(IRR_time, " (", IC_lower_time, "-",
+                                     IC_upper_time, ")"))
+
+colnames(tab2.type) <- c("Cancer type", "pandemia", "pandemia:time_after", 
+                         "time")
+
+write_csv2(tab2.type, 
+           file = "/Users/Fran/Dropbox (Personal)/Analisis IMED/lme/paper/210505 lme tab2 tipo.csv")
+
+```
+
+
+```{r}
+tab2.type.prev <- tab.models.type.prev %>% 
+  filter(Vars %in% c("pandemia", "pandemia:time_after", "time")) %>% 
+  mutate(Vars = ifelse(Vars=="pandemia:time_after", "pandemia_time_after", Vars),
+         Model = ifelse(Model=="ISAPRE", "Private", "Public")) %>% 
+  dplyr::select(Model, Vars, IRR, IC_lower, IC_upper, Grupo) %>% 
+  pivot_wider(id_cols = c(Grupo, Model), names_from = Vars, 
+              values_from = c(IRR, IC_lower, IC_upper)) %>% 
+  mutate_if(is.numeric, ~round(., 3)) %>%
+  summarise(Grupo, Model, 
+            pandemia = paste0(IRR_pandemia, " (", IC_lower_pandemia, "-",
+                                     IC_upper_pandemia, ")"), 
+            pandemia_time_after = paste0(IRR_pandemia_time_after, " (", 
+                                         IC_lower_pandemia_time_after, "-",
+                                         IC_upper_pandemia_time_after, ")"),
+            time = paste0(IRR_time, " (", IC_lower_time, "-",
+                                     IC_upper_time, ")")) %>% arrange(Grupo)
+
+colnames(tab2.type.prev) <- c("Cancer type", "Insurance", "pandemia", "pandemia:time_after", 
+                         "time")
+
+write_csv2(tab2.type.prev, 
+           file = "/Users/Fran/Dropbox (Personal)/Analisis IMED/lme/paper/210326 lme tab2 tipo y prevision.csv")
+
+```
+
+```{r}
+tab2.type.sexo <- tab.models.type.sexo %>% 
+  filter(Vars %in% c("pandemia", "pandemia:time_after", "time")) %>% 
+  mutate(Vars = ifelse(Vars=="pandemia:time_after", "pandemia_time_after", Vars),
+         Model = ifelse(Model=="M", "Male", "Female")) %>% 
+  dplyr::select(Model, Vars, IRR, IC_lower, IC_upper, Grupo) %>% 
+  pivot_wider(id_cols = c(Grupo, Model), names_from = Vars, 
+              values_from = c(IRR, IC_lower, IC_upper)) %>% 
+  mutate_if(is.numeric, ~round(., 3)) %>%
+  summarise(Grupo, Model, 
+            pandemia = paste0(IRR_pandemia, " (", IC_lower_pandemia, "-",
+                                     IC_upper_pandemia, ")"), 
+            pandemia_time_after = paste0(IRR_pandemia_time_after, " (", 
+                                         IC_lower_pandemia_time_after, "-",
+                                         IC_upper_pandemia_time_after, ")"),
+            time = paste0(IRR_time, " (", IC_lower_time, "-",
+                                     IC_upper_time, ")")) %>% arrange(Grupo)
+
+colnames(tab2.type.sexo) <- c("Cancer type", "Sex", "pandemia", "pandemia:time_after", 
+                         "time")
+
+write_csv2(tab2.type.sexo, 
+           file = "/Users/Fran/Dropbox (Personal)/Analisis IMED/lme/paper/210326 lme tab2 tipo y sexo.csv")
+
+```
+
+## 3. Tabla 3 
+
+```{r TODAS POR TIPO}
+tab3 <- dat.plots.type %>% 
+  filter(pandemia == 1) %>% 
+  group_by(Cancer_type) %>% 
+  summarise(count = sum(count),
+            yhat = sum(yhat),
+            cf = sum(cf),
+            ub = sum(ub),
+            lb = sum(lb),
+            cf_ub = sum(cf_ub),
+            cf_lb = sum(cf_lb),
+            dif = cf - yhat,
+            dif_ub = cf_ub - ub,
+            dif_lb = cf_lb - lb) %>% 
+  mutate(across(-Cancer_type, round), .keep = "all")
+
+tab3.2020 <- dat.plots.type %>% 
+  filter(year==2020) %>% 
+  group_by(Cancer_type) %>% 
+  summarise(cf = sum(cf),
+            cf_ub = sum(cf_ub),
+            cf_lb = sum(cf_lb)) %>%
+  rename(total_2020=cf,
+         ub_2020=cf_ub,
+         lb_2020=cf_lb) %>% 
+  mutate(across(-Cancer_type, round), .keep = "all")
+
+tab3 <- left_join(tab3, tab3.2020)
+rm(tab3.2020)
+
+tab3<- tab3 %>% 
+  mutate(reduction_perc=dif/total_2020*100,
+         reduction_ub= dif_ub/ub_2020*100,
+         reduction_lb= dif_lb/lb_2020*100)  %>% 
+  mutate(across(-Cancer_type, ~round(., 2)), .keep = "all") %>% 
+  summarise(Cancer_type,
+            DIF = paste0(dif, " (", dif_lb, "-", dif_ub, ")"),
+            PERCENT = paste0(reduction_perc,"% (", reduction_lb, "% -",
+                             reduction_ub, "%)"))
+
+colnames(tab3) <- c("Cancer type","Count Reduction (CI 95%)", "% Expected lme 2020")
+
+
+write_csv2(tab3, file = "/Users/Fran/Dropbox (Personal)/Analisis IMED/lme/paper/210513 lme tab3 tipo.csv")
+```
+
+
+```{r TODAS (POR TIPO) POR PREVISION}
+tab.red.prev <- dat.plots.type.prev %>% 
+  filter(pandemia == 1) %>% 
+  group_by(Cancer_type, prevision) %>% 
+  summarise(count = sum(count),
+            yhat = sum(yhat),
+            cf = sum(cf),
+            ub = sum(ub),
+            lb = sum(lb),
+            cf_ub = sum(cf_ub),
+            cf_lb = sum(cf_lb),
+            dif = cf - yhat,
+            dif_ub = cf_ub - ub,
+            dif_lb = cf_lb - lb) %>% 
+  pivot_wider(id_cols = Cancer_type, names_from = prevision, values_from = c(dif, dif_lb, dif_ub)) %>% 
+  summarise(Cancer_type, dif_FONASA, dif_lb_FONASA, dif_ub_FONASA, dif_ISAPRE, dif_lb_ISAPRE, dif_ub_ISAPRE,
+            dif = dif_FONASA - dif_ISAPRE,
+            dif_lb = dif_lb_FONASA - dif_lb_ISAPRE,
+            dif_ub = dif_ub_FONASA - dif_ub_ISAPRE) %>% 
+  mutate(across(-Cancer_type, round), .keep = "all") %>% 
+  summarise(Cancer_type,
+            FONASA = paste0(dif_FONASA, " (", dif_lb_FONASA, "-", dif_ub_FONASA, ")"),
+            ISAPRE = paste0(dif_ISAPRE, " (", dif_lb_ISAPRE, "-", dif_ub_ISAPRE, ")"),
+            DIF = paste0(dif, " (", dif_lb, "-", dif_ub, ")"))
+
+colnames(tab.red.prev) <- c("Cancer type", "FONASA Count (CI 95%)", "ISAPRE Count (CI 95%)", 
+                         "Excess impact on FONASA Count (CI 95%)")
+
+tab.red.prev  
+
+#write_csv2(tab.red.prev, file = "/Users/Fran/Dropbox (Personal)/Analisis IMED/lme/paper/210315 lme tab3 prevision.csv")
+```
+
+```{r AGREGADAS POR PREVISION}
+tab.red.prev <- dat.plots.agg %>% 
+  filter(pandemia == 1, mod.int == "Insurance") %>% 
+  group_by(prevision) %>% 
+  summarise(Cancer_type="All cancers",
+            count = sum(count),
+            yhat = sum(yhat),
+            cf = sum(cf),
+            ub = sum(ub),
+            lb = sum(lb),
+            cf_ub = sum(cf_ub),
+            cf_lb = sum(cf_lb),
+            dif = cf - yhat,
+            dif_ub = cf_ub - ub,
+            dif_lb = cf_lb - lb) %>% 
+  pivot_wider(id_cols = Cancer_type, names_from = prevision, values_from = c(dif, dif_lb, dif_ub)) %>% 
+  summarise(Cancer_type, dif_FONASA, dif_lb_FONASA, dif_ub_FONASA, dif_ISAPRE, dif_lb_ISAPRE, dif_ub_ISAPRE,
+            dif = dif_FONASA - dif_ISAPRE,
+            dif_lb = dif_lb_FONASA - dif_lb_ISAPRE,
+            dif_ub = dif_ub_FONASA - dif_ub_ISAPRE) %>% 
+  mutate(across(-Cancer_type, round), .keep = "all") %>% 
+  summarise(Cancer_type,
+            FONASA = paste0(dif_FONASA, " (", dif_lb_FONASA, "-", dif_ub_FONASA, ")"),
+            ISAPRE = paste0(dif_ISAPRE, " (", dif_lb_ISAPRE, "-", dif_ub_ISAPRE, ")"),
+            DIF = paste0(dif, " (", dif_lb, "-", dif_ub, ")"))
+
+colnames(tab.red.prev) <- c("Cancer type", "FONASA Count (CI 95%)", "ISAPRE Count (CI 95%)", 
+                         "Excess impact on FONASA Count (CI 95%)")
+
+tab.red.prev  
+
+#write_csv2(tab.red.prev, file = "/Users/Fran/Dropbox (Personal)/Analisis IMED/lme/paper/210315 lme tab3 prevision.csv")
+```
+
+```{r TODAS (POR TIPO) POR SEXO}
+tab3.sexo <- dat.plots.type.sexo %>% 
+  filter(pandemia == 1) %>% 
+  group_by(Cancer_type, sexo) %>% 
+  summarise(count = sum(count),
+            yhat = sum(yhat),
+            cf = sum(cf),
+            ub = sum(ub),
+            lb = sum(lb),
+            cf_ub = sum(cf_ub),
+            cf_lb = sum(cf_lb),
+            dif = cf - yhat,
+            dif_ub = cf_ub - ub,
+            dif_lb = cf_lb - lb) %>% 
+  pivot_wider(id_cols = Cancer_type, names_from = sexo, values_from = c(dif, dif_lb, dif_ub)) %>% 
+  summarise(Cancer_type, dif_M, dif_lb_M, dif_ub_M, dif_F, dif_lb_F, dif_ub_F,
+            dif = dif_F - dif_M,
+            dif_lb = dif_lb_F - dif_lb_M,
+            dif_ub = dif_ub_F - dif_ub_M) %>% 
+  mutate(across(-Cancer_type, round), .keep = "all") %>% 
+  summarise(Cancer_type,
+            Male = paste0(dif_M, " (", dif_lb_M, "-", dif_ub_M, ")"),
+            Female = paste0(dif_F, " (", dif_lb_F, "-", dif_ub_F, ")"),
+            DIF = paste0(dif, " (", dif_lb, "-", dif_ub, ")"))
+
+colnames(tab3.sexo) <- c("Cancer type", "Male Count (CI 95%)", "Female Count (CI 95%)", 
+                         "Excess impact on Female Count (CI 95%)")
+
+tab3.sexo
+
+write_csv2(tab3.sexo, file = "/Users/Fran/Dropbox (Personal)/Analisis IMED/lme/paper/210530 lme tab3 sexo.csv")
+```
+
+```{r AGREGADAS POR SEXO}
+tab3.sexo <- dat.plots.agg %>% 
+  filter(pandemia == 1, mod.int == "Sex")%>% 
+  group_by(sexo) %>% 
+  summarise(Cancer_type="All cancers",
+            count = sum(count),
+            yhat = sum(yhat),
+            cf = sum(cf),
+            ub = sum(ub),
+            lb = sum(lb),
+            cf_ub = sum(cf_ub),
+            cf_lb = sum(cf_lb),
+            dif = cf - yhat,
+            dif_ub = cf_ub - ub,
+            dif_lb = cf_lb - lb) %>% 
+  pivot_wider(id_cols = Cancer_type, names_from = sexo, values_from = c(dif, dif_lb, dif_ub)) %>% 
+  summarise(Cancer_type, dif_M, dif_lb_M, dif_ub_M, dif_F, dif_lb_F, dif_ub_F,
+            dif = dif_F - dif_M,
+            dif_lb = dif_lb_F - dif_lb_M,
+            dif_ub = dif_ub_F - dif_ub_M) %>% 
+  mutate(across(-Cancer_type, round), .keep = "all") %>% 
+  summarise(Cancer_type,
+            Male = paste0(dif_M, " (", dif_lb_M, "-", dif_ub_M, ")"),
+            Female = paste0(dif_F, " (", dif_lb_F, "-", dif_ub_F, ")"),
+            DIF = paste0(dif, " (", dif_lb, "-", dif_ub, ")"))
+
+colnames(tab3.sexo) <- c("Cancer type", "Male Count (CI 95%)", "Female Count (CI 95%)", 
+                         "Excess impact on Female Count (CI 95%)")
+
+tab3.sexo
+
+#write_csv2(tab3.sexo, file = "/Users/Fran/Dropbox (Personal)/Analisis IMED/lme/paper/210530 lme tab3 sexo.csv")
+```
+
+
+```{r NUEVAS POR TIPO}
+tab3.new <- dat.plots.type.new %>% 
+  filter(pandemia == 1) %>% 
+  group_by(Cancer_type) %>% 
+  summarise(count = sum(count),
+            yhat = sum(yhat),
+            cf = sum(cf),
+            ub = sum(ub),
+            lb = sum(lb),
+            cf_ub = sum(cf_ub),
+            cf_lb = sum(cf_lb),
+            dif = cf - yhat,
+            dif_ub = cf_ub - ub,
+            dif_lb = cf_lb - lb) %>% 
+  mutate(across(-Cancer_type, round), .keep = "all") 
+
+tab3.new.2020 <- dat.plots.type.new %>% 
+  filter(year==2020) %>% 
+  group_by(Cancer_type) %>% 
+  summarise(cf = sum(cf),
+            cf_ub = sum(cf_ub),
+            cf_lb = sum(cf_lb)) %>%
+  rename(total_2020=cf,
+         ub_2020=cf_ub,
+         lb_2020=cf_lb) %>% 
+  mutate(across(-Cancer_type, round), .keep = "all")
+
+tab3.new <- left_join(tab3.new, tab3.new.2020)
+rm(tab3.new.2020)
+
+tab3.new<- tab3.new %>% 
+  mutate(reduction_perc=dif/total_2020*100,
+         reduction_ub= dif_ub/ub_2020*100,
+         reduction_lb= dif_lb/lb_2020*100)  %>% 
+  mutate(across(-Cancer_type, ~round(., 2)), .keep = "all") %>% 
+  summarise(Cancer_type,
+            DIF = paste0(dif, " (", dif_lb, "-", dif_ub, ")"),
+            PERCENT = paste0(reduction_perc,"% (", reduction_lb, "% -",
+                             reduction_ub, "%)"))
+
+colnames(tab3.new) <- c("Cancer type","Count Reduction (CI 95%)", "% Expected lme 2020")
+
+
+
+
+
+write_csv2(tab3.new, file = "/Users/Fran/Dropbox (Personal)/Analisis IMED/lme/paper/210513 lme tab3 nuevas tipo.csv")
+```
+
+```{r CONTINUACION POR TIPO}
+tab3.cont <- dat.plots.type.cont %>% 
+  filter(pandemia == 1) %>% 
+  group_by(Cancer_type) %>% 
+  summarise(count = sum(count),
+            yhat = sum(yhat),
+            cf = sum(cf),
+            ub = sum(ub),
+            lb = sum(lb),
+            cf_ub = sum(cf_ub),
+            cf_lb = sum(cf_lb),
+            dif = cf - yhat,
+            dif_ub = cf_ub - ub,
+            dif_lb = cf_lb - lb) %>% 
+  mutate(across(-Cancer_type, round), .keep = "all") %>% 
+  summarise(Cancer_type,
+            DIF = paste0(dif, " (", dif_lb, "-", dif_ub, ")"))
+
+colnames(tab3.cont) <- c("Cancer type","Impact Follow up LME Count (CI 95%)")
+
+#write_csv2(tab3.cont, file = "/Users/Fran/Dropbox (Personal)/Analisis IMED/lme/paper/210426 lme tab3 continuacion tipo.csv")
+```
+
+```{r AGREGADAS}
+tab3.agg <- dat.plots.agg %>% 
+  filter(pandemia == 1, mod.int== "Additive") %>% 
+  summarise(Cancer_type= "Total sick leaves",
+            count = sum(count),
+            yhat = sum(yhat),
+            cf = sum(cf),
+            ub = sum(ub),
+            lb = sum(lb),
+            cf_ub = sum(cf_ub),
+            cf_lb = sum(cf_lb),
+            dif = cf - yhat,
+            dif_ub = cf_ub - ub,
+            dif_lb = cf_lb - lb) %>% 
+  mutate(across(-Cancer_type, round), .keep = "all") 
+
+tab3.agg.2020 <- dat.plots.agg %>% 
+  filter(year==2020, mod.int== "Additive") %>% 
+  summarise(Cancer_type= "Total sick leaves",
+            cf = sum(cf),
+            cf_ub = sum(cf_ub),
+            cf_lb = sum(cf_lb),) %>%
+  rename(total_2020=cf,
+         ub_2020=cf_ub,
+         lb_2020=cf_lb) %>% 
+  mutate(across(-Cancer_type, round), .keep = "all")
+
+tab3.agg <- left_join(tab3.agg, tab3.agg.2020)
+
+tab3.agg<- tab3.agg %>% 
+  mutate(reduction_perc=dif/total_2020*100,
+         reduction_ub= dif_ub/ub_2020*100,
+         reduction_lb= dif_lb/lb_2020*100)  %>% 
+  mutate(across(-Cancer_type, ~round(., 2)), .keep = "all") %>% 
+  summarise(Cancer_type,
+            DIF = paste0(dif, " (", dif_lb, "-", dif_ub, ")"),
+            PERCENT = paste0(reduction_perc,"% (", reduction_lb, "% -",
+                             reduction_ub, "%)"))
+
+colnames(tab3.agg) <- c("Cancer type","Count Reduction (CI 95%)", "% Expected lme 2020")
+
+write_csv2(tab3.agg, file = "/Users/Fran/Dropbox (Personal)/Analisis IMED/lme/paper/210513 lme tab3 agregadas.csv")
+
+```
+
+```{r AGREGADAS POR PREVISION}
+tab3.agg.prev <- dat.plots.agg %>% 
+  filter(pandemia == 1, mod.int== "Insurance") %>% 
+  group_by(prevision) %>% 
+  summarise(count = sum(count),
+            yhat = sum(yhat),
+            cf = sum(cf),
+            ub = sum(ub),
+            lb = sum(lb),
+            cf_ub = sum(cf_ub),
+            cf_lb = sum(cf_lb),
+            dif = cf - yhat,
+            dif_ub = cf_ub - ub,
+            dif_lb = cf_lb - lb) %>% 
+  mutate(across(-prevision, round), .keep = "all") 
+
+tab3.agg.prev.2020 <- dat.plots.agg %>% 
+  filter(year==2020, mod.int== "Insurance") %>% 
+  group_by(prevision) %>% 
+  summarise(cf = sum(cf),
+            cf_ub = sum(cf_ub),
+            cf_lb = sum(cf_lb),) %>%
+  rename(total_2020=cf,
+         ub_2020=cf_ub,
+         lb_2020=cf_lb) %>% 
+  mutate(across(-prevision, round), .keep = "all")
+
+tab3.agg.prev <- left_join(tab3.agg.prev, tab3.agg.prev.2020)
+
+rm(tab3.agg.prev.2020)
+
+tab3.agg.prev<- tab3.agg.prev %>% 
+  mutate(reduction_perc=dif/total_2020*100,
+         reduction_ub= dif_ub/ub_2020*100,
+         reduction_lb= dif_lb/lb_2020*100) %>%
+  mutate(across(-prevision, ~round(., 2)), .keep = "all") %>% 
+  summarise(prevision,
+            DIF = paste0(dif, " (", dif_lb, "-", dif_ub, ")"),
+            PERCENT = paste0(reduction_perc,"% (", reduction_lb, "% -",
+                             reduction_ub, "%)"))
+
+colnames(tab3.agg.prev) <- c("Insurance","Count Reduction (CI 95%)", "% Expected lme 2020")
+
+write_csv2(tab3.agg.prev, file = "/Users/Fran/Dropbox (Personal)/Analisis IMED/lme/paper/210513 lme tab3 agregadas prev.csv")
+
+
+```
+
+```{r AGREGADAS POR SEXO}
+tab3.agg.sexo <- dat.plots.agg %>% 
+  filter(pandemia == 1, mod.int== "Sex") %>% 
+  group_by(sexo) %>% 
+  summarise(count = sum(count),
+            yhat = sum(yhat),
+            cf = sum(cf),
+            ub = sum(ub),
+            lb = sum(lb),
+            cf_ub = sum(cf_ub),
+            cf_lb = sum(cf_lb),
+            dif = cf - yhat,
+            dif_ub = cf_ub - ub,
+            dif_lb = cf_lb - lb) %>% 
+  mutate(across(-sexo, round), .keep = "all") 
+
+tab3.agg.sexo.2020 <- dat.plots.agg %>% 
+  filter(year==2020, mod.int== "Sex") %>% 
+  group_by(sexo) %>% 
+  summarise(cf = sum(cf),
+            cf_ub = sum(cf_ub),
+            cf_lb = sum(cf_lb),) %>%
+  rename(total_2020=cf,
+         ub_2020=cf_ub,
+         lb_2020=cf_lb) %>% 
+  mutate(across(-sexo, round), .keep = "all")
+
+tab3.agg.sexo <- left_join(tab3.agg.sexo, tab3.agg.sexo.2020)
+
+rm(tab3.agg.sexo.2020)
+
+tab3.agg.sexo<- tab3.agg.sexo %>% 
+  mutate(reduction_perc=dif/total_2020*100,
+         reduction_ub= dif_ub/ub_2020*100,
+         reduction_lb= dif_lb/lb_2020*100) %>% 
+  mutate(across(-sexo, ~round(., 2)), .keep = "all") %>% 
+  summarise(sexo,
+            DIF = paste0(dif, " (", dif_lb, "-", dif_ub, ")"),
+            PERCENT = paste0(reduction_perc,"% (", reduction_lb, "% -",
+                             reduction_ub, "%)"))
+
+colnames(tab3.agg.sexo) <- c("Sex","Count Reduction (CI 95%)", "% Expected lme 2020")
+
+write_csv2(tab3.agg.sexo, file = "/Users/Fran/Dropbox (Personal)/Analisis IMED/lme/paper/210513 lme tab3 agregadas sexo.csv")
+
+```
+
+```{r AGREGADAS POR EDAD}
+tab3.agg.edad <- dat.plots.agg %>% 
+  filter(pandemia == 1, mod.int== "Age") %>% 
+  group_by(edad_cat) %>% 
+  summarise(count = sum(count),
+            yhat = sum(yhat),
+            cf = sum(cf),
+            ub = sum(ub),
+            lb = sum(lb),
+            cf_ub = sum(cf_ub),
+            cf_lb = sum(cf_lb),
+            dif = cf - yhat,
+            dif_ub = cf_ub - ub,
+            dif_lb = cf_lb - lb) %>% 
+  mutate(across(-edad_cat, round), .keep = "all") 
+
+tab3.agg.edad.2020 <- dat.plots.agg %>% 
+  filter(year==2020, mod.int== "Age") %>% 
+  group_by(edad_cat) %>% 
+  summarise(cf = sum(cf),
+            cf_ub = sum(cf_ub),
+            cf_lb = sum(cf_lb),) %>%
+  rename(total_2020=cf,
+         ub_2020=cf_ub,
+         lb_2020=cf_lb) %>% 
+  mutate(across(-edad_cat, round), .keep = "all")
+
+tab3.agg.edad <- left_join(tab3.agg.edad, tab3.agg.edad.2020)
+
+rm(tab3.agg.edad.2020)
+
+tab3.agg.edad<- tab3.agg.edad %>% 
+  mutate(reduction_perc=dif/total_2020*100,
+         reduction_ub= dif_ub/ub_2020*100,
+         reduction_lb= dif_lb/lb_2020*100) %>% 
+  mutate(across(-edad_cat, ~round(., 2)), .keep = "all") %>% 
+  summarise(edad_cat,
+            DIF = paste0(dif, " (", dif_lb, "-", dif_ub, ")"),
+            PERCENT = paste0(reduction_perc,"% (", reduction_lb, "% -",
+                             reduction_ub, "%)"))
+
+colnames(tab3.agg.edad) <- c("Age group","Count Reduction (CI 95%)", "% Expected lme 2020")
+
+write_csv2(tab3.agg.edad, file = "/Users/Fran/Dropbox (Personal)/Analisis IMED/lme/paper/210517 lme tab3 agregadas edad.csv")
+
+```
+
+```{r AGREGADAS NUEVAS}
+tab3.agg.new <- dat.plots.new %>% 
+  filter(pandemia == 1) %>% 
+  summarise(Cancer_type= "New sick leaves",
+            count = sum(count),
+            yhat = sum(yhat),
+            cf = sum(cf),
+            ub = sum(ub),
+            lb = sum(lb),
+            cf_ub = sum(cf_ub),
+            cf_lb = sum(cf_lb),
+            dif = cf - yhat,
+            dif_ub = cf_ub - ub,
+            dif_lb = cf_lb - lb) %>% 
+  mutate(across(-Cancer_type, round), .keep = "all") 
+
+tab3.agg.new.2020 <- dat.plots.new %>% 
+  filter(year==2020) %>% 
+  summarise(Cancer_type= "New sick leaves",
+            cf = sum(cf),
+            cf_ub = sum(cf_ub),
+            cf_lb = sum(cf_lb),) %>%
+  rename(total_2020=cf,
+         ub_2020=cf_ub,
+         lb_2020=cf_lb) %>% 
+  mutate(across(-Cancer_type, round), .keep = "all")
+
+tab3.agg.new <- left_join(tab3.agg.new, tab3.agg.new.2020)
+
+tab3.agg.new<- tab3.agg.new %>% 
+  mutate(reduction_perc=dif/total_2020*100,
+         reduction_ub= dif_ub/ub_2020*100,
+         reduction_lb= dif_lb/lb_2020*100) %>% 
+  mutate(across(-Cancer_type, ~round(., 2)), .keep = "all") %>% 
+  summarise(Cancer_type,
+            DIF = paste0(dif, " (", dif_lb, "-", dif_ub, ")"),
+            PERCENT = paste0(reduction_perc,"% (", reduction_lb, "% -",
+                             reduction_ub, "%)"))
+
+colnames(tab3.agg.new) <- c("Cancer type","Count Reduction (CI 95%)", "% Expected lme 2020")
+
+
+write_csv2(tab3.agg.new, file = "/Users/Fran/Dropbox (Personal)/Analisis IMED/lme/paper/210513 lme tab3 nuevas agregadas.csv")
+
+```

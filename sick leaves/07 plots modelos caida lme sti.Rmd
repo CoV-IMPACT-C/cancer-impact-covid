@@ -1,0 +1,375 @@
+---
+title: "Figuras de resultados modelos de serie de tiempo interrumpida para caída en licencias médicas por cáncer"
+subtitle: "Binomial negativo agregado y por tipo de cáncer; submodelos por sexo y previsión"
+output: 
+---
+
+
+```{r LIBRERIAS, message=FALSE, warning=FALSE, include=FALSE}
+library(data.table)
+library(tidyverse)
+library(sjPlot)
+library(ggpubr)
+```
+
+```{r DATA}
+
+load(file = "output/DB/DB predichos nb sti.RData")
+
+dat.plots.agg<-dat.plots
+  
+load(file = "output/DB/DB predichos nb sti por tipo.RData")
+
+dat.plots.type<-dat.plots
+
+load(file = "output/DB/DB predichos nb sti por tipo y prevision.RData")
+
+dat.plots.type.prev<-dat.plots
+
+load(file = "output/DB/DB predichos nb sti por tipo y sexo.RData")
+
+dat.plots.type.sexo<-dat.plots
+
+rm(dat.plots)
+
+```
+
+# Figuras
+
+## Figura 1
+
+```{r FIG1, fig.width=6, fig.height=11, message=FALSE, warning=FALSE}
+
+g1.agg <- dat.plots.agg %>% 
+  mutate(week = as.numeric(week)) %>% 
+  filter(mod.int == "Additive") %>% 
+  mutate(exposicion = ifelse(year == 2020, "2020", "2018-2019")) %>% 
+  group_by(week, year, exposicion) %>% summarise(count = sum(count),
+                                                 yhat = sum(yhat),
+                                                 cf = sum(cf),
+                                                 ub = sum(ub),
+                                                 lb = sum(lb),
+                                                 cf_ub = sum(cf_ub),
+                                                 cf_lb = sum(cf_lb) ) %>% 
+  group_by(week, exposicion)%>% summarise(count = mean(count),
+                                          yhat = mean(yhat),
+                                          cf = mean(cf),
+                                          ub = mean(ub),
+                                          lb = mean(lb),
+                                          cf_ub = mean(cf_ub),
+                                          cf_lb = mean(cf_lb) ) %>% 
+  ggplot(aes(x = week, y = count, fill = exposicion)) +
+  geom_point(alpha = .3, aes(color = exposicion), size = 1.5) +
+  geom_line(aes(x = week, y = yhat, color = exposicion, linetype = "Observed")) +
+  geom_ribbon(aes(ymin = lb, ymax = ub, group = exposicion), alpha = .3) +
+  geom_line(aes(x = week, y = cf, color = exposicion, linetype = "Predicted counterfactual"), 
+            size = .3, name = "bla") +
+  geom_ribbon(aes(ymin = cf_lb, ymax = cf_ub, group = exposicion), alpha = .15) +
+  scale_linetype_manual(values = c("Observed" = 1, "Predicted counterfactual" = 2)) +
+  ylim(0, NA) +
+  theme_minimal() +
+  scale_x_continuous(breaks = seq(5, 53, 6)) +
+  theme(panel.grid.minor.x = element_blank())+
+  labs(y = "Count", x = "Week", fill = "Period", color = "Period", linetype = "Scenario",
+       subtitle = "", title = "Total cancer sick leaves") +
+  geom_vline(xintercept = 11, linetype = "dotted", color = "red") + 
+  theme(legend.position = "bottom",
+        axis.title = element_text(size = 7),
+        axis.text = element_text(size = 6),
+        plot.subtitle = element_text(size = 8),
+        plot.title = element_text(size = 11, face = "bold"))
+
+g1.agg
+
+plots.g1 <- list()
+
+for (i in 1:17){
+  plots.g1[[i]] <- dat.plots.type %>% 
+  filter(Cancer_type == levels(dat.plots.type$Cancer_type)[i]) %>% 
+  mutate(week = as.numeric(week)) %>% 
+  mutate(exposicion = ifelse(year == 2020, "2020", "2018-2019")) %>% 
+  group_by(week, year, exposicion, Cancer_type) %>% summarise(count = sum(count),
+                                                 yhat = sum(yhat),
+                                                 cf = sum(cf),
+                                                 ub = sum(ub),
+                                                 lb = sum(lb),
+                                                 cf_ub = sum(cf_ub),
+                                                 cf_lb = sum(cf_lb) ) %>% 
+  group_by(week, exposicion, Cancer_type)%>% summarise(count = mean(count),
+                                          yhat = mean(yhat),
+                                          cf = mean(cf),
+                                          ub = mean(ub),
+                                          lb = mean(lb),
+                                          cf_ub = mean(cf_ub),
+                                          cf_lb = mean(cf_lb) ) %>% 
+  ggplot(aes(x = week, y = count, fill = exposicion)) +
+#  geom_point(alpha = .3, aes(color = exposicion), size = 1.5) +
+  geom_line(aes(x = week, y = yhat, color = exposicion, linetype = "Observed")) +
+  geom_ribbon(aes(ymin = lb, ymax = ub, group = exposicion), alpha = .3) +
+  geom_line(aes(x = week, y = cf, color = exposicion, linetype = "Predicted counterfactual"), 
+            size = .3, name = "bla") +
+  geom_ribbon(aes(ymin = cf_lb, ymax = cf_ub, group = exposicion), alpha = .15) +
+  scale_linetype_manual(values = c("Observed" = 1, "Predicted counterfactual" = 2)) +
+  ylim(0, NA) +
+  scale_x_continuous(breaks = seq(11, 53, 12)) +
+  theme_minimal() +
+  theme(panel.grid.minor.x = element_blank())+
+  labs(y = "Count", x = "Week", fill = "Period", color = "Period", linetype = "Scenario",
+       subtitle = paste0(levels(dat.plots.type$Cancer_type)[i], " cancer"), title = "") +
+  geom_vline(xintercept = 11, linetype = "dotted", color = "red") + 
+  theme(legend.position = "bottom",
+        axis.title = element_text(size = 7),
+        axis.text = element_text(size = 6),
+        plot.subtitle = element_text(size = 8),
+        plot.title = element_text(size = 11, face = "bold"))  
+}
+
+
+g1.a <- ggarrange(plots.g1[[2]], plots.g1[[3]],
+                  ncol = 2, nrow = 1, common.legend = T, legend = "none", align = "hv")
+
+g1.b <- ggarrange(plots.g1[[4]], plots.g1[[7]],
+                  ncol = 2, nrow = 1, common.legend = T, legend = "none", align = "hv")
+
+g1.c <- ggarrange(plots.g1[[15]], 
+                  ncol = 2, nrow = 1, common.legend = T, legend = "none", align = "hv")
+
+g1.type <- ggarrange(g1.a, g1.b, g1.c, ncol = 1, 
+          common.legend = T, legend = "top")
+
+g1 <- ggarrange(g1.agg, g1.type, ncol = 1, heights = c(1, 2),
+          common.legend = T, legend.grob = get_legend(g1.agg), legend = "top")
+
+g1
+ggsave(plot = g1,
+       filename = "output/plots/lme fig1.pdf", 
+       device = "pdf",
+       dpi = "retina",
+       width = 6, height = 8)
+```
+
+## Figura 1 por previsión - material suplementario
+
+```{r FIG2, fig.width=6, fig.height=11, message=FALSE, warning=FALSE}
+g2.agg <- dat.plots.agg %>% 
+  mutate(week = as.numeric(week)) %>% 
+  filter(mod.int == "Insurance") %>% 
+  mutate(exposicion = ifelse(year == 2020, "2020", "2018-2019"),
+         prevision = ifelse(prevision=="FONASA", "Public", "Private")) %>% 
+  group_by(week, year, exposicion, prevision) %>% summarise(count = sum(count),
+                                                 yhat = sum(yhat),
+                                                 cf = sum(cf),
+                                                 ub = sum(ub),
+                                                 lb = sum(lb),
+                                                 cf_ub = sum(cf_ub),
+                                                 cf_lb = sum(cf_lb) ) %>% 
+  group_by(week, exposicion, prevision)%>% summarise(count = mean(count),
+                                          yhat = mean(yhat),
+                                          cf = mean(cf),
+                                          ub = mean(ub),
+                                          lb = mean(lb),
+                                          cf_ub = mean(cf_ub),
+                                          cf_lb = mean(cf_lb) ) %>% 
+  ggplot(aes(x = week, y = count, fill = exposicion)) +
+  geom_point(alpha = .3, aes(color = exposicion), size = 1.5) +
+  geom_line(aes(x = week, y = yhat, color = exposicion, linetype = "Observed")) +
+  geom_ribbon(aes(ymin = lb, ymax = ub, group = exposicion), alpha = .3) +
+
+  geom_line(aes(x = week, y = cf, color = exposicion, linetype = "Predicted counterfactual"),
+            size = .3, name = "bla") +
+  geom_ribbon(aes(ymin = cf_lb, ymax = cf_ub, group = exposicion), alpha = .15) +
+  scale_linetype_manual(values = c("Observed" = 1, "Predicted counterfactual" = 2)) +
+  facet_grid(~ fct_relevel(prevision,"Public","Private")) + 
+  ylim(0, NA) +
+  scale_x_continuous(breaks = seq(5, 53, 6)) +
+  theme_minimal() + 
+  labs(y = "Count", x = "Week", fill = "Period", color = "Period", linetype = "Scenario",
+#       subtitle = "by insurance", 
+       title = "Total cancer sick leaves") +
+  theme(panel.grid.minor.x = element_blank()) +
+  geom_vline(xintercept = 11, linetype = "dotted", color = "red") + 
+  theme(legend.position = "bottom",
+        axis.title = element_text(size = 7),
+        axis.text = element_text(size = 6),
+        plot.subtitle = element_text(size = 8),
+        plot.title = element_text(size = 11, face = "bold"))
+
+g2.agg
+
+plots.g2 <- list()
+
+for (i in 1:17){
+  plots.g2[[i]] <- dat.plots.type.prev %>% 
+  filter(Cancer_type == levels(dat.plots.type.prev$Cancer_type)[i]) %>% 
+  mutate(week = as.numeric(week)) %>% 
+  mutate(exposicion = ifelse(year == 2020, "2020", "2018-2019"),
+         prevision = ifelse(prevision=="FONASA", "Public", "Private")) %>% 
+  group_by(week, year, exposicion, prevision, Cancer_type) %>% summarise(count = sum(count),
+                                                 yhat = sum(yhat),
+                                                 cf = sum(cf),
+                                                 ub = sum(ub),
+                                                 lb = sum(lb),
+                                                 cf_ub = sum(cf_ub),
+                                                 cf_lb = sum(cf_lb) ) %>% 
+  group_by(week, exposicion, prevision, Cancer_type)%>% summarise(count = mean(count),
+                                          yhat = mean(yhat),
+                                          cf = mean(cf),
+                                          ub = mean(ub),
+                                          lb = mean(lb),
+                                          cf_ub = mean(cf_ub),
+                                          cf_lb = mean(cf_lb) ) %>% 
+  ggplot(aes(x = week, y = count, fill = exposicion))+
+#  geom_point(alpha = .3, aes(color = exposicion), size = 1.5) +
+  geom_line(aes(x = week, y = yhat, color = exposicion, linetype = "Observed")) +
+  geom_ribbon(aes(ymin = lb, ymax = ub, group = exposicion), alpha = .3) +
+  geom_line(aes(x = week, y = cf, color = exposicion, linetype = "Predicted counterfactual"), size = .3, name = "bla") +
+  geom_ribbon(aes(ymin = cf_lb, ymax = cf_ub, group = exposicion), alpha = .15) +
+  scale_linetype_manual(values = c("Observed" = 1, "Predicted counterfactual" = 2)) +
+  facet_grid(~ fct_relevel(prevision,"Public","Private")) + 
+  ylim(0, NA) +
+  scale_x_continuous(breaks = seq(11, 53, 12)) +
+  theme_minimal() + 
+  labs(y = "Count", x = "Week", fill = "Period", color = "Period", linetype = "Scenario",
+       title = "", 
+       subtitle = paste0(levels(dat.plots.type.prev$Cancer_type)[i], " cancer")) +
+  theme(panel.grid.minor.x = element_blank())+
+  geom_vline(xintercept = 11, linetype = "dotted", color = "red") + 
+  theme(legend.position = "bottom",
+        axis.title = element_text(size = 7),
+        axis.text = element_text(size = 6),
+        plot.subtitle = element_text(size = 8),
+        plot.title = element_text(size = 11, face = "bold"))  
+}
+
+
+g2.a <- ggarrange(plots.g2[[2]], plots.g2[[3]],
+                  ncol = 2, nrow = 1, common.legend = T, legend = "none", align = "hv")
+
+g2.b <- ggarrange(plots.g2[[4]], plots.g2[[7]],
+                  ncol = 2, nrow = 1, common.legend = T, legend = "none", align = "hv")
+
+g2.c <- ggarrange(plots.g2[[15]], 
+                  ncol = 2, nrow = 1, common.legend = T, legend = "none", align = "hv")
+
+g2.type <- ggarrange(g2.a, g2.b, g2.c, ncol = 1, 
+          common.legend = T, legend = "top")
+
+g2 <- ggarrange(g2.agg, g2.type, ncol = 1, heights = c(1, 3),
+          common.legend = T, legend.grob = get_legend(g2.agg), legend = "top")
+
+g2
+ggsave(plot = g2,
+       filename = "output/plots/lme fig1 prevision.pdf", 
+       device = "pdf",
+       dpi = "retina",
+       width = 6, height = 8)
+```
+
+```{r FIG3, fig.width=6, fig.height=11, message=FALSE, warning=FALSE}
+g3.agg <- dat.plots.agg %>% 
+  mutate(week = as.numeric(week)) %>% 
+  filter(mod.int == "Sex") %>% 
+  mutate(exposicion = ifelse(year == 2020, "2020", "2018-2019"),
+         sexo = ifelse(sexo=="M", "Male", "Female")) %>% 
+  group_by(week, year, exposicion, sexo) %>% summarise(count = sum(count),
+                                                 yhat = sum(yhat),
+                                                 cf = sum(cf),
+                                                 ub = sum(ub),
+                                                 lb = sum(lb),
+                                                 cf_ub = sum(cf_ub),
+                                                 cf_lb = sum(cf_lb) ) %>% 
+  group_by(week, exposicion, sexo)%>% summarise(count = mean(count),
+                                          yhat = mean(yhat),
+                                          cf = mean(cf),
+                                          ub = mean(ub),
+                                          lb = mean(lb),
+                                          cf_ub = mean(cf_ub),
+                                          cf_lb = mean(cf_lb) ) %>% 
+  ggplot(aes(x = week, y = count, fill = exposicion))+
+  
+  geom_point(alpha = .3, aes(color = exposicion), size = 1.5) +
+  geom_line(aes(x = week, y = yhat, color = exposicion, linetype = "Observed")) +
+  geom_ribbon(aes(ymin = lb, ymax = ub, group = exposicion), alpha = .3) +
+
+  geom_line(aes(x = week, y = cf, color = exposicion, linetype = "Predicted counterfactual"),
+            size = .3, name = "bla") +
+  geom_ribbon(aes(ymin = cf_lb, ymax = cf_ub, group = exposicion), alpha = .15) +
+  scale_linetype_manual(values = c("Observed" = 1, "Predicted counterfactual" = 2)) +
+  facet_grid(. ~ fct_relevel(sexo,"Male","Female")) + 
+  ylim(0, NA) +
+  scale_x_continuous(breaks = seq(5, 53, 6)) +
+  theme_minimal() + 
+  labs(y = "Count", x = "Week", fill = "Period", color = "Period", linetype = "Scenario",
+#       subtitle = "by sex", 
+       title = "Total cancer sick leaves") +
+  theme(panel.grid.minor.x = element_blank()) +
+  geom_vline(xintercept = 11, linetype = "dotted", color = "red") + 
+  theme(legend.position = "bottom",
+        axis.title = element_text(size = 7),
+        axis.text = element_text(size = 6),
+        plot.subtitle = element_text(size = 8),
+        plot.title = element_text(size = 11, face = "bold"))
+
+g3.agg
+
+plots.g3 <- list()
+
+for (i in 1:12){
+  plots.g3[[i]] <- dat.plots.type.sexo %>% 
+  filter(Cancer_type == levels(dat.plots.type.sexo$Cancer_type)[i]) %>% 
+  mutate(week = as.numeric(week)) %>% 
+  mutate(exposicion = ifelse(year == 2020, "2020", "2018-2019"),
+         sexo = ifelse(sexo=="M", "Male", "Female")) %>% 
+  group_by(week, year, exposicion, sexo, Cancer_type) %>% summarise(count = sum(count),
+                                                 yhat = sum(yhat),
+                                                 cf = sum(cf),
+                                                 ub = sum(ub),
+                                                 lb = sum(lb),
+                                                 cf_ub = sum(cf_ub),
+                                                 cf_lb = sum(cf_lb) ) %>% 
+  group_by(week, exposicion, sexo, Cancer_type)%>% summarise(count = mean(count),
+                                          yhat = mean(yhat),
+                                          cf = mean(cf),
+                                          ub = mean(ub),
+                                          lb = mean(lb),
+                                          cf_ub = mean(cf_ub),
+                                          cf_lb = mean(cf_lb) ) %>% 
+  ggplot(aes(x = week, y = count, fill = exposicion))+
+  
+#  geom_point(alpha = .3, aes(color = exposicion), size = 1.5) +
+  geom_line(aes(x = week, y = yhat, color = exposicion, linetype = "Observed")) +
+  geom_ribbon(aes(ymin = lb, ymax = ub, group = exposicion), alpha = .3) +
+
+  geom_line(aes(x = week, y = cf, color = exposicion, linetype = "Predicted counterfactual"), size = .3, name = "bla") +
+  geom_ribbon(aes(ymin = cf_lb, ymax = cf_ub, group = exposicion), alpha = .15) +
+  scale_linetype_manual(values = c("Observed" = 1, "Predicted counterfactual" = 2)) +
+  facet_grid(. ~ fct_relevel(sexo,"Male","Female")) + 
+  ylim(0, NA) +
+  scale_x_continuous(breaks = seq(11, 53, 12)) +
+  theme_minimal() + 
+  labs(y = "Count", x = "Week", fill = "Period", color = "Period", linetype = "Scenario",
+       title = "", 
+       subtitle = paste0(levels(dat.plots.type.sexo$Cancer_type)[i], " cancer")) +
+  theme(panel.grid.minor.x = element_blank()) +
+  geom_vline(xintercept = 11, linetype = "dotted", color = "red") + 
+  theme(legend.position = "bottom",
+        axis.title = element_text(size = 7),
+        axis.text = element_text(size = 6),
+        plot.subtitle = element_text(size = 8),
+        plot.title = element_text(size = 11, face = "bold"))  
+}
+
+
+g3.type <- ggarrange(plots.g3[[2]], plots.g3[[5]], ncol = 1, 
+          common.legend = T, legend = "none", align = "hv")
+
+
+g3 <- ggarrange(g3.agg, g3.type, ncol = 1, heights = c(1,2), common.legend = T, legend.grob = get_legend(g3.agg), legend = "top")
+
+g3
+ggsave(plot = g3,
+       filename = "output/plots/lme fig1 sexo.pdf", 
+       device = "pdf",
+       dpi = "retina",
+       width = 6, height = 8)
+```

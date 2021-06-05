@@ -1,0 +1,175 @@
+---
+title: "Modelos de serie de tiempo interrumpida para caída en lme oncológicas"
+output: 
+---
+
+```{r RMD SETTINGS, message=FALSE, warning=FALSE, include=FALSE}
+rm(list = ls()); gc() 
+knitr::opts_knit$set(root.dir = "/Users/Fran/Dropbox (Personal)/Analisis IMED/lme")
+knitr::opts_chunk$set(include = FALSE,
+                      echo = FALSE,
+                      message = FALSE,
+                      warning = FALSE)
+```
+
+```{r LIBRERIAS, message=FALSE, warning=FALSE, include=FALSE}
+library(data.table)
+library(tidyverse)
+library(MASS)
+library(sjPlot)
+```
+
+# 1. Datos
+
+
+```{r LOAD AND PREPARE SAVED DATA GROUPED BY WEEK}
+load("/Users/Fran/Dropbox (Personal)/Analisis IMED/lme/output/DB/licencias_cancer_2018.RData")
+
+licencias_cancer_2018 %>% group_by(continuacion) %>% summarise(n=sum(n_lme))
+
+lme_modelos_agregados <- licencias_cancer_2018 %>% 
+  # FILTRO
+  filter(prevision %in% c("FONASA", "ISAPRE"), !is.na(grupo_edad_2), 
+         !is.na(sexo_trabajador), continuacion=="Nuevas")  %>% 
+  group_by(date_wk, cie10, prevision, sexo_trabajador, grupo_edad_2) %>% 
+  summarise(n_lme=sum(n_lme))
+
+lme.2018.dt <- as.data.table(lme_modelos_agregados)
+
+lme_modelos_agregados <- lme.2018.dt[
+  , time := as.numeric(factor(date_wk, labels = 0:156)) - 1  ][
+    , time_after := ifelse(time < 115, 0, (time - 115 ))  ]
+
+rm(lme.2018.dt)
+
+lme_modelos_agregados <- lme_modelos_agregados  %>% 
+  # VARIABLES NUEVAS Y MODIFICADAS
+  mutate(pandemia = ifelse(date_wk < as.Date("2020-03-15"), 0, 1),
+         grupo_edad_2 = relevel(grupo_edad_2, "[40,50)"),
+         sexo_trabajador = as.factor(sexo_trabajador),
+         sexo_trabajador = relevel(sexo_trabajador, "M"),
+         year=lubridate::year(date_wk),
+         week=lubridate::week(date_wk),
+         prevision = as.factor(prevision),
+         week = as.factor(week)) %>% 
+  rename(grupo_edad = grupo_edad_2)
+
+lme_modelos_agregados <- droplevels(lme_modelos_agregados)
+
+sum(lme_modelos_agregados$n_lme)
+
+dat.agg.nuevas <- lme_modelos_agregados %>% 
+  rename(edad_cat = grupo_edad,
+         sexo = sexo_trabajador, 
+         count = n_lme) %>% 
+  group_by(date_wk, prevision, sexo, edad_cat, year, 
+           week, time, pandemia, time_after ) %>% 
+  summarise(count=sum(count))
+```
+
+
+```{r MODELO NUEVAS ADITIVO}
+
+model <- glm.nb(count ~ sexo + edad_cat + prevision + year + week + pandemia 
+                + time + pandemia:time_after, data = dat.agg.nuevas)
+
+summary(model)
+
+# load(file = "/Users/Fran/Dropbox (Personal)/Analisis IMED/lme/output/modelos/nb sti caida lme/20210315 sti caida lme por tipo y prevision.RData")
+```
+
+## 2.1 Tablas modelos
+
+```{r}
+tab.models <- data.table()
+summ <- summary(model)
+tab.models <- as.data.frame(summ$coefficients)
+tab.models$Vars <- rownames(summ$coefficients)
+
+confint.models <- data.table()
+
+conf <- confint(model)
+confint.models <- as.data.frame(conf)
+confint.models$Vars <- rownames(conf)
+
+tab.models <- cbind(tab.models, confint.models[,c(1:2)])
+
+invlink <- model$family$linkinv
+
+tab.models <- tab.models %>% as.data.table()
+
+. <- tab.models[
+  , IRR := invlink(Estimate) ][
+  , IC_lower := invlink(`2.5 %`) ][
+  , IC_upper := invlink(`97.5 %`) ]
+
+tab.models <- .
+
+#save(tab.models, file = "/Users/Fran/Dropbox (Personal)/Analisis IMED/lme/output/tab/tab nb sti/20210322 coef sti nuevas por tipo.RData")
+
+# load(file = "/Users/Fran/Dropbox (Personal)/Analisis IMED/lme/output/tab/tab nb sti/20210315 coef sti por tipo y prevision.RData")
+```
+
+
+## 2.2 Gráfico de coeficientes de modelos
+
+```{r fig.height=10, fig.width=6}
+tab.models %>% 
+  ggplot(aes(x = IRR, y = Vars)) +
+  geom_point()
+```
+
+```{r fig.height=10, fig.width=10}
+g.coeff <- tab.models %>% 
+  filter(Vars %in% c("edad_cat[0,10)", "edad_cat[10,20)", "edad_cat[20,30)", 
+                     "edad_cat[30,40)", "edad_cat[50,60)", "edad_cat[60,70)", "edad_cat[70,80)", 
+                     "sexoF", "pandemia", "pandemia:time_after", "time")) %>% 
+  ggplot(aes(x = IRR, y = Vars)) +
+  geom_point() +
+  geom_errorbarh(aes(xmin = IC_lower, xmax = IC_upper), alpha = .5) +
+  geom_vline(xintercept = 1, alpha = .3, linetype = 2) +
+  theme(legend.position = "bottom")
+
+g.coeff
+
+#ggsave(g.coeff, 
+#       filename = "/Users/Fran/Dropbox (Personal)/Analisis IMED/lme/output/graf/2020/tipo cancer/coef modelos por tipo.png", 
+#       device = "png",
+#       dpi = "retina",
+#       width = 12, height = 8)
+```
+
+# 3. Predicciones
+
+```{r PREDICTED DB}
+    
+  dat.cf <- dat.agg.nuevas
+  dat.cf$pandemia <- 0
+
+  dat.plots <- dat.agg.nuevas
+
+  ilink <- family(model)$linkinv
+  
+  pred <- predict(model, se.fit = T)
+  yhat <- pred$fit
+  se <- pred$se.fit
+  
+  dat.plots$yhat <- ilink(yhat)
+  dat.plots$ub <- ilink(yhat + (1.96*se))
+  dat.plots$lb <- ilink(yhat - (1.96*se))
+  
+  
+  pred.cf <- predict(model, newdata = dat.cf, se.fit = T)
+  cf <- pred.cf$fit
+  cf.se <- pred.cf$se.fit
+  
+  dat.plots$cf <- ilink(cf)
+  dat.plots$cf_ub <- ilink(cf + (1.96*cf.se))
+  dat.plots$cf_lb <- ilink(cf - (1.96*cf.se))
+
+  
+  rm(dat.cf,  ilink, pred, yhat, se, pred.cf, cf, cf.se)
+  
+save(dat.plots, file = "/Users/Fran/Dropbox (Personal)/Analisis IMED/lme/output/DB/20210503 DB predichos nb sti nuevos")
+```
+
