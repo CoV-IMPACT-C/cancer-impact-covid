@@ -167,7 +167,7 @@ g1.agg <- dat.plots.agg %>%
 
   scale_x_continuous(breaks = seq(5, 53, 6), expand = c(0,0)) +
   labs(y = "% diagnostic confirmations reduction", x = "Week", 
-       subtitle = "", title = "Total cancer diagnostic confirmations") +
+       subtitle = "", title = "a. Total cancer diagnostic confirmations") +
   geom_vline(xintercept = 11, linetype = "dotted", color = "red") + 
   theme_minimal() + 
   theme(legend.position = "right",
@@ -201,7 +201,7 @@ g2.agg <- dat.plots.agg.sexo %>%
 
     scale_x_continuous(breaks = seq(5, 53, 6), expand = c(0,0)) +
   labs(y = "% diagnostic confirmations reduction", x = "Week", fill = "Sex", color = "Sex", 
-       subtitle = "", title = "Cancer diagnostic confirmations by sex") +
+       subtitle = "", title = "b. Cancer diagnostic confirmations by sex") +
   geom_vline(xintercept = 11, linetype = "dotted", color = "red") + 
   theme_minimal() + 
   theme(legend.position = "right",
@@ -233,7 +233,7 @@ g3.agg <- dat.plots.agg.prev %>%
 #  coord_cartesian(xlim = c(0,4))+
   scale_x_continuous(breaks = seq(5, 53, 6), expand = c(0,0)) +
   labs(y = "% diagnostic confirmations reduction", x = "Week", fill = "Insurance", color = "Insurance", 
-       subtitle = "", title = "Cancer diagnostic confirmations by insurance") +
+       subtitle = "", title = "c. Cancer diagnostic confirmations by insurance") +
   geom_vline(xintercept = 11, linetype = "dotted", color = "red") + 
   theme_minimal() + 
   theme(legend.position = "right",
@@ -242,7 +242,7 @@ g3.agg <- dat.plots.agg.prev %>%
         plot.subtitle = element_text(size = 8),
         plot.title = element_text(size = 11, face = "bold"))
 
-g1.a <- ggarrange(g1.agg, ncol = 2, widths = c(4,1))
+g1.a <- ggarrange(g1.agg, ncol = 2, widths = c(5,1))
 
 g1.ges <- ggarrange(g1.a, g2.agg, g3.agg, ncol = 1)
 g1.ges
@@ -281,10 +281,10 @@ g1.agg.prest <- dat.plots.agg.prest %>%
   geom_ribbon(aes(ymin = cf_lb, ymax = cf_ub, group = exposicion), alpha = .15) +
   scale_linetype_manual(values = c("Observed" = 1, "Predicted counterfactual" = 2)) +
   ylim(0, NA) +
-  scale_x_discrete(breaks = seq(5, 53, 6)) +
+  scale_x_discrete(breaks = seq(5, 53, 6), expand = c(0, 0)) +
   theme_minimal() + 
   labs(y = "Count", x = "Week", fill = "Period", color = "Period", linetype = "Scenario",
-       subtitle = "", title = "Total cancer-related health services") +
+       subtitle = "", title = "d. Total cancer-related health services") +
   geom_vline(xintercept = 11, linetype = "dotted", color = "red") + 
   theme(legend.position = "bottom",
         axis.title = element_text(size = 7),
@@ -327,10 +327,10 @@ g1.agg.lme <- dat.plots.agg.lme %>%
   scale_linetype_manual(values = c("Observed" = 1, "Predicted counterfactual" = 2)) +
   ylim(0, NA) +
   theme_minimal() +
-  scale_x_continuous(breaks = seq(5, 53, 6)) +
+  scale_x_continuous(breaks = seq(5, 53, 6), expand = c(0, 0)) +
   theme(panel.grid.minor.x = element_blank())+
   labs(y = "Count", x = "Week", fill = "Period", color = "Period", linetype = "Scenario",
-       subtitle = "", title = "Total cancer sick leaves") +
+       subtitle = "", title = "e. Total cancer sick leaves") +
   geom_vline(xintercept = 11, linetype = "dotted", color = "red") + 
   theme(legend.position = "bottom",
         axis.title = element_text(size = 7),
@@ -353,7 +353,7 @@ g1.prest.lme <- ggarrange(g1.agg.prest, g1.agg.lme, ncol = 1,
 g1.prest.lme
 
 
-g1 <- ggarrange(g1.ges, g1.prest.lme, ncol = 2)
+g1 <- ggarrange(g1.ges, g1.prest.lme, ncol = 2, widths = c(1.1, 1))
 
 g1
 
