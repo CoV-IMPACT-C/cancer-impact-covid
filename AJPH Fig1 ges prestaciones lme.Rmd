@@ -286,7 +286,7 @@ g1.agg.prest <- dat.plots.agg.prest %>%
   labs(y = "Count", x = "Week", fill = "Period", color = "Period", linetype = "Scenario",
        subtitle = "", title = "Total cancer-related health services") +
   geom_vline(xintercept = 11, linetype = "dotted", color = "red") + 
-  theme(legend.position = "right",
+  theme(legend.position = "bottom",
         axis.title = element_text(size = 7),
         axis.text = element_text(size = 6),
         plot.subtitle = element_text(size = 7),
@@ -332,7 +332,7 @@ g1.agg.lme <- dat.plots.agg.lme %>%
   labs(y = "Count", x = "Week", fill = "Period", color = "Period", linetype = "Scenario",
        subtitle = "", title = "Total cancer sick leaves") +
   geom_vline(xintercept = 11, linetype = "dotted", color = "red") + 
-  theme(legend.position = "right",
+  theme(legend.position = "bottom",
         axis.title = element_text(size = 7),
         axis.text = element_text(size = 6),
         plot.subtitle = element_text(size = 8),
@@ -341,12 +341,6 @@ g1.agg.lme <- dat.plots.agg.lme %>%
 g1.agg.lme
 
 
-
-#ggsave(plot = g1,
-#       filename = "output/plots/lme fig1.pdf", 
-#       device = "pdf",
-#       dpi = "retina",
-#       width = 6, height = 8)
 ```
 
 ## Combine
@@ -354,18 +348,18 @@ g1.agg.lme
 ```{r FIG1, fig.width=6, fig.height=11, message=FALSE, warning=FALSE}
 
 g1.prest.lme <- ggarrange(g1.agg.prest, g1.agg.lme, ncol = 1,
-        common.legend = T, legend.grob = get_legend(g1.agg.prest), legend = "right")
+        common.legend = T, legend.grob = get_legend(g1.agg.prest), legend = "top")
 
 g1.prest.lme
 
 
-g1 <- ggarrange(g1.ges, g1.prest.lme, ncol = 1)
+g1 <- ggarrange(g1.ges, g1.prest.lme, ncol = 2)
 
 g1
 
 ggsave(plot = g1,
-       filename = "all services/fig1.pdf", 
+       filename = "all services/AJPH fig1.pdf", 
        device = "pdf",
        dpi = "retina",
-       width = 6, height = 12)
+       width = 12, height = 8)
 ```
