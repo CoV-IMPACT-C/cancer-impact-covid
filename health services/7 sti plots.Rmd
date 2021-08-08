@@ -113,7 +113,7 @@ for (i in 1:17){
                                           cf_ub = mean(cf_ub),
                                           cf_lb = mean(cf_lb)) %>% 
   ggplot(aes(x = week, y = count, fill = exposicion))+
-  #geom_point(alpha = .3, aes(color = exposicion), size = 1) +
+  geom_point(alpha = .3, aes(color = exposicion), size = .5) +
   geom_line(aes(x = week, y = yhat, color = exposicion, group = exposicion, linetype = "Observed")) +
   geom_ribbon(aes(ymin = lb, ymax = ub, group = exposicion), alpha = .3) +
   geom_line(aes(x = week, y = cf, color = exposicion, group = exposicion, linetype = "Predicted counterfactual"), 
@@ -162,7 +162,7 @@ ggsave(plot = g1,
        filename = "output/plots/paper prestaciones fig1.pdf", 
        device = "pdf",
        dpi = "retina",
-       width = 6, height = 9)
+       width = 8, height = 12)
 
 rm(g1.a, g1.b, g1.c, g1.d, g1.e, g1.f, g1.bc, g1.ef, g1.type, g1.agg)
 
