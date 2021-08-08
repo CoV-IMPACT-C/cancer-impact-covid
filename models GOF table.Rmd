@@ -55,7 +55,7 @@ knitr::kable(hs.agg.gof)
 # Sick leaves
 
 ```{r}
-load("sick leaves/output/models/sti agregados.RData")
+load("sick leaves/output/models/sti agregados.RData") #no tengo este archivo en github
 sl.agg <- models
 
 ```
@@ -67,7 +67,7 @@ nmod <- sl.agg %>% length()
 
 sl.agg.gof <- data.frame(
   mods = c("Complete", "Female", "Male", "Private", "Public", "[0,10)", "[10,20)",
-           "[20,30)", "[30,40)", "[40,50)", "[50,60)", "[60,70)", "[70,80)"),
+           "[20,30)", "[30,40)", "[40,50)", "[50,60)", "[60,70)", "[70,80)"), #modificar según los grupos
   aic = numeric(nmod),
   bic = numeric(nmod),
   nobs = numeric(nmod), 
