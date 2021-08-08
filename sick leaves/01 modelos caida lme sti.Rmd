@@ -22,7 +22,7 @@ library(sjPlot)
 # 1. Datos
 
 ```{r LOAD AND PREPARE SAVED DATA GROUPED BY WEEK}
-load("/Users/Fran/Dropbox (Personal)/Analisis IMED/lme/output/DB/licencias_cancer_2018.RData")
+load("output/DB/licencias_cancer_2018.RData")
 
 lme_modelos_agregados <- licencias_cancer_2018 %>% 
   # FILTRO
