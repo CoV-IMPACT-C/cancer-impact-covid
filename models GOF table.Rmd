@@ -1,0 +1,89 @@
+---
+title: "Models GOF"
+output: 
+---
+
+```{r}
+library(tidyverse)
+```
+
+# Health services
+
+```{r}
+load("health services/output/models/sti agregados.RData")
+hs.agg <- models
+
+load("health services/output/models/sti x sexo.RData")
+hs.agg.sex <- models
+
+load("health services/output/models/sti x prevision.RData")
+hs.agg.prev <- models
+
+load("health services/output/models/sti x prestacion.RData")
+hs.agg.prest <- models
+
+```
+
+## Agreggated models
+
+```{r}
+nmod <- hs.agg %>% length()
+
+hs.agg.gof <- data.frame(
+  mods = c("Complete", "Female", "Male", "Private", "Public", "[0,10)", "[10,20)",
+           "[20,30)", "[30,40)", "[40,50)", "[50,60)", "[60,70)", "[70,80)"),
+  aic = numeric(nmod),
+  bic = numeric(nmod),
+  nobs = numeric(nmod), 
+  coef = numeric(nmod)
+)
+
+for (i in 1:nmod) {
+
+  hs.agg.gof$aic[[i]] <- AIC(hs.agg[[i]])
+  hs.agg.gof$bic[[i]] <- BIC(hs.agg[[i]])
+  hs.agg.gof$nobs[[i]] <- nobs(hs.agg[[i]])
+  hs.agg.gof$coef[[i]] <- coef(hs.agg[[i]]) %>% length()
+
+}
+
+colnames(hs.agg.gof) <- c("Model", "AIC", "BIC", "Number of groups", "Number of coefficients")
+
+knitr::kable(hs.agg.gof)
+```
+
+# Sick leaves
+
+```{r}
+load("sick leaves/output/models/sti agregados.RData")
+sl.agg <- models
+
+```
+
+## Agreggated models
+
+```{r}
+nmod <- sl.agg %>% length()
+
+sl.agg.gof <- data.frame(
+  mods = c("Complete", "Female", "Male", "Private", "Public", "[0,10)", "[10,20)",
+           "[20,30)", "[30,40)", "[40,50)", "[50,60)", "[60,70)", "[70,80)"),
+  aic = numeric(nmod),
+  bic = numeric(nmod),
+  nobs = numeric(nmod), 
+  coef = numeric(nmod)
+)
+
+for (i in 1:nmod) {
+
+  sl.agg.gof$aic[[i]] <- AIC(sl.agg[[i]])
+  sl.agg.gof$bic[[i]] <- BIC(sl.agg[[i]])
+  sl.agg.gof$nobs[[i]] <- nobs(sl.agg[[i]])
+  sl.agg.gof$coef[[i]] <- coef(sl.agg[[i]]) %>% length()
+
+}
+
+colnames(sl.agg.gof) <- c("Model", "AIC", "BIC", "Number of groups", "Number of coefficients")
+
+knitr::kable(sl.agg.gof)
+```
