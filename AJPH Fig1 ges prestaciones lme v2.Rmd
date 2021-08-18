@@ -111,7 +111,7 @@ rm(dat.plots)
 g1.agg.ges <- dat.plots.agg.ges %>% 
 #  filter(mod.int == "Additive") %>% 
   mutate(exposicion = ifelse(year == 2020, "2020", "2017-2019"),
-         week=as.factor(as.numeric(week)-1)) %>%
+         week=as.numeric(week)-1) %>%
   filter(!week==0) %>% 
   group_by(week, year, exposicion) %>% summarise(count = sum(count),
                                                  yhat = sum(yhat),
@@ -136,11 +136,10 @@ g1.agg.ges <- dat.plots.agg.ges %>%
   geom_ribbon(aes(ymin = cf_lb, ymax = cf_ub, group = exposicion), alpha = .15) +
   scale_linetype_manual(values = c("Observed" = 1, "Predicted counterfactual" = 2)) +
   ylim(0, NA) +
-  xlim(0, 52) +
-  scale_x_discrete(breaks = seq(5, 53, 6),
-#                   labels = seq(5, 53, 6),
-                   expand = c(0, 0)) +
+  scale_x_continuous(breaks = seq(5, 53, 6), limits = c(NA,52), expand = c(0,0)) +
+#  xlim(0, 53) +
   theme_minimal() + 
+  theme(panel.grid.minor.x = element_blank())+
   labs(y = "Count", x = "Week", fill = "Period", color = "Period", linetype = "Scenario",
        subtitle = "", title = "a. Cancer diagnostic confirmations") +
   geom_vline(xintercept = 11, linetype = "dotted", color = "red") + 
@@ -161,7 +160,7 @@ g1.agg.ges
 ```{r FIG1, fig.width=6, fig.height=9, message=FALSE, warning=FALSE}
 g1.agg.prest <- dat.plots.agg.prest %>% 
   filter(mod.int == "Additive",
-         !(week %in% c(52,53))) %>% 
+        !week==53) %>% 
   mutate(exposicion = ifelse(year == 2020, "2020", "2018-2019")) %>% 
   group_by(week, year, exposicion) %>% summarise(count = sum(count),
                                                  yhat = sum(yhat),
@@ -186,6 +185,7 @@ g1.agg.prest <- dat.plots.agg.prest %>%
   geom_ribbon(aes(ymin = cf_lb, ymax = cf_ub, group = exposicion), alpha = .15) +
   scale_linetype_manual(values = c("Observed" = 1, "Predicted counterfactual" = 2)) +
   ylim(0, NA) +
+  xlim(NA, 52) +
   scale_x_discrete(breaks = seq(5, 53, 6), expand = c(0, 0)) +
   theme_minimal() + 
   labs(y = "Count", x = "Week", fill = "Period", color = "Period", linetype = "Scenario",
@@ -208,7 +208,7 @@ g1.agg.prest
 g1.agg.lme <- dat.plots.agg.lme %>% 
   mutate(week = as.numeric(week)) %>% 
   filter(mod.int == "Additive",
-         !(week %in% c(52,53))) %>% 
+        !week==53) %>% 
   mutate(exposicion = ifelse(year == 2020, "2020", "2018-2019")) %>% 
   group_by(week, year, exposicion) %>% summarise(count = sum(count),
                                                  yhat = sum(yhat),
@@ -234,7 +234,7 @@ g1.agg.lme <- dat.plots.agg.lme %>%
   scale_linetype_manual(values = c("Observed" = 1, "Predicted counterfactual" = 2)) +
   ylim(0, NA) +
   theme_minimal() +
-  scale_x_continuous(breaks = seq(5, 53, 6), expand = c(0, 0)) +
+  scale_x_continuous(breaks = seq(5, 53, 6), expand = c(0, 0), limits = c(NA, 52)) +
   theme(panel.grid.minor.x = element_blank())+
   labs(y = "Count", x = "Week", fill = "Period", color = "Period", linetype = "Scenario",
        subtitle = "", title = "c. Cancer sick leaves") +
