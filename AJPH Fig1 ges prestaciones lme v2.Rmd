@@ -189,7 +189,7 @@ g1.agg.prest <- dat.plots.agg.prest %>%
   scale_x_discrete(breaks = seq(5, 53, 6), expand = c(0, 0)) +
   theme_minimal() + 
   labs(y = "Count", x = "Week", fill = "Period", color = "Period", linetype = "Scenario",
-       subtitle = "", title = "b. Cancer-related ambulatory services") +
+       subtitle = "", title = "b. Cancer-related outpatient services") +
   geom_vline(xintercept = 11, linetype = "dotted", color = "red") + 
   theme(legend.position = "bottom",
         axis.title = element_text(size = 7),
