@@ -6,6 +6,7 @@ output:
 #Librerías
 
 ```{r}
+rm(list = ls())
 library(data.table)
 library(tidyverse)
 ```
@@ -71,7 +72,7 @@ dat <- dat %>%
   mutate(caida_abs = cf-count,
          caida_rel = caida_abs*100 /cf,
          data = factor(data, levels = c("prest", "ges", "lme"), 
-                       labels = c("Ambulatory\nservices", 
+                       labels = c("Outpatient\nservices", 
                                   "Diagnostic\n confirmations", "New sick\nleaves")))
 
 
