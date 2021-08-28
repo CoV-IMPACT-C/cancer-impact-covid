@@ -7,6 +7,7 @@ output:
 #
 
 ```{r LIBRERIAS, message=FALSE, warning=FALSE, include=FALSE}
+rm(list = ls())
 library(data.table)
 library(tidyverse)
 library(ggpubr)
@@ -26,7 +27,7 @@ dat.cerv <- as.data.table(read_dta("output/DB/Cervix cancer (tabla con observado
 
 dat.colo <- as.data.table(read_dta("output/DB/Cáncer colorectal (tabla con observados, predichos y contrafactual).dta"))[, cancer := "Colorectal Cancer"]
 
-dat.gast <- as.data.table(read_dta("output/DB/Cáncer gástrico (tabla con observados, predichos y contrafactual).dta"))[, cancer := "Gastric Cancer"]
+dat.gast <- as.data.table(read_dta("output/DB/Cáncer gástrico (tabla con observados, predichos y contrafactual).dta"))[, cancer := "Stomach Cancer"]
 
 dat.leuk <- as.data.table(read_dta("output/DB/Leucemia (tabla con observados, predichos y contrafactual).dta"))[, cancer := "Leukemia"]
 
@@ -311,7 +312,7 @@ for (i in 1:7){
 
 
 g1.a <- ggarrange(plots.g1[[1]], 
-                  plots.g1[[2]], plots.g1[[3]], plots.g1[[4]], 
+                  plots.g1[[2]], plots.g1[[3]], plots.g1[[6]], 
                   ncol = 2, nrow = 2, common.legend = T, legend = "none", align = "hv")
 
 g1 <- ggarrange(g1.agg, g1.a, ncol = 1, heights = c(1, 2),
@@ -366,7 +367,7 @@ g2.agg <- dat.plots.agg %>%
         plot.subtitle = element_text(size = 8),
         plot.title = element_text(size = 11, face = "bold"))
 
-cancer.sex <- c("Colorectal Cancer", "Gastric Cancer", "Leukemia", "Lymphoma")
+cancer.sex <- c("Colorectal Cancer", "Stomach Cancer", "Leukemia", "Lymphoma")
 
 plots.g2 <- list()
 
