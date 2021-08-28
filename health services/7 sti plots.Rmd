@@ -8,6 +8,7 @@ output:
 #
 
 ```{r LIBRERIAS, message=FALSE, warning=FALSE, include=FALSE}
+rm(list = ls())
 library(data.table)
 library(tidyverse)
 library(ggpubr)
@@ -84,7 +85,7 @@ g1.agg <- dat.plots.agg %>%
   scale_x_discrete(breaks = seq(5, 53, 6)) +
   theme_minimal() + 
   labs(y = "Count", x = "Week", fill = "Period", color = "Period", linetype = "Scenario",
-       subtitle = "", title = "Total cancer-related health services") +
+       subtitle = "", title = "Total cancer-related outpatient health services") +
   geom_vline(xintercept = 11, linetype = "dotted", color = "red") + 
   theme(legend.position = "bottom",
         axis.title = element_text(size = 7),
@@ -139,7 +140,7 @@ g1.a <- ggarrange(plots.g1[[1]] + ggtitle("Non-specific services"),
                   ncol = 4, nrow = 1, common.legend = T, legend = "none", align = "hv")
 g1.b <- ggarrange(plots.g1[[6]] + ggtitle(levels(dat.plots.type$grp.cancer)[2]), plots.g1[[7]], 
                   ncol = 2, nrow = 1, common.legend = T, legend = "none", align = "hv")
-g1.c <- ggarrange(plots.g1[[12]] + ggtitle(levels(dat.plots.type$grp.cancer)[4]), plots.g1[[11]], 
+g1.c <- ggarrange(plots.g1[[12]] + ggtitle("Stomach cancer"), plots.g1[[11]], 
                   ncol = 2, nrow = 1, common.legend = T, legend = "none", align = "hv")
 g1.d <- ggarrange(plots.g1[[8]] + ggtitle(levels(dat.plots.type$grp.cancer)[3]), plots.g1[[9]], plots.g1[[10]], 
                   ncol = 4, nrow = 1, common.legend = T, legend = "none", align = "hv")
