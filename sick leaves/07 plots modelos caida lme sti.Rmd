@@ -6,6 +6,7 @@ output:
 
 
 ```{r LIBRERIAS, message=FALSE, warning=FALSE, include=FALSE}
+rm(list = ls())
 library(data.table)
 library(tidyverse)
 library(sjPlot)
@@ -20,7 +21,8 @@ dat.plots.agg<-dat.plots
   
 load(file = "output/DB/DB predichos nb sti por tipo.RData")
 
-dat.plots.type<-dat.plots
+dat.plots.type<-dat.plots %>% 
+  mutate(Cancer_type=fct_recode(Cancer_type, "Stomach" = "Gastric"))
 
 load(file = "output/DB/DB predichos nb sti por tipo y prevision.RData")
 
