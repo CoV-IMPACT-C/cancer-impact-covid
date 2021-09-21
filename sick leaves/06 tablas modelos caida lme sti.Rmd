@@ -5,7 +5,6 @@ output:
 
 ```{r RMD SETTINGS, message=FALSE, warning=FALSE, include=FALSE}
 rm(list = ls()); gc() 
-knitr::opts_knit$set(root.dir = "/Users/Fran/Dropbox (Personal)/Analisis IMED/lme")
 knitr::opts_chunk$set(include = FALSE,
                       echo = FALSE,
                       message = FALSE,
@@ -20,47 +19,47 @@ library(sjPlot)
 
 ```{r DATA}
 
-load(file = "/Users/Fran/Dropbox (Personal)/Analisis IMED/lme/output/tab/tab nb sti/20210223 coef sti datos agregados.RData")
+load(file = "output/tab/tab nb sti/20210223 coef sti datos agregados.RData")
 
 tab.models.agg<-tab.models
 
-load(file = "/Users/Fran/Dropbox (Personal)/Analisis IMED/lme/output/tab/tab nb sti/20210322 coef sti por tipo.RData")
+load(file = "output/tab/tab nb sti/20210322 coef sti por tipo.RData")
 
 tab.models.type<-tab.models
 
-load(file = "/Users/Fran/Dropbox (Personal)/Analisis IMED/lme/output/tab/tab nb sti/20210315 coef sti por tipo y prevision.RData")
+load(file = "output/tab/tab nb sti/20210315 coef sti por tipo y prevision.RData")
 
 tab.models.type.prev<-tab.models
 
-load(file = "/Users/Fran/Dropbox (Personal)/Analisis IMED/lme/output/tab/tab nb sti/20210322 coef sti por tipo y sexo.RData")
+load(file = "output/tab/tab nb sti/20210322 coef sti por tipo y sexo.RData")
 
 tab.models.type.sexo<-tab.models
 
-load(file = "/Users/Fran/Dropbox (Personal)/Analisis IMED/lme/output/DB/20210223 DB predichos nb sti.RData")
+load(file = "output/DB/20210223 DB predichos nb sti.RData")
 
 dat.plots.agg<-dat.plots
 
-load(file = "/Users/Fran/Dropbox (Personal)/Analisis IMED/lme/output/DB/20210322 DB predichos nb sti por tipo.RData")
+load(file = "output/DB/20210322 DB predichos nb sti por tipo.RData")
 
 dat.plots.type<-dat.plots
 
-load(file = "/Users/Fran/Dropbox (Personal)/Analisis IMED/lme/output/DB/20210315 DB predichos nb sti por tipo y prevision")
+load(file = "output/DB/20210315 DB predichos nb sti por tipo y prevision.RData")
 
 dat.plots.type.prev<-dat.plots
 
-load(file = "/Users/Fran/Dropbox (Personal)/Analisis IMED/lme/output/DB/20210322 DB predichos nb sti por tipo y sexo")
+load(file = "output/DB/20210322 DB predichos nb sti por tipo y sexo.RData")
 
 dat.plots.type.sexo<-dat.plots
 
-load(file = "/Users/Fran/Dropbox (Personal)/Analisis IMED/lme/output/DB/20210322 DB predichos nb sti nuevos por tipo")
+load(file = "output/DB/20210322 DB predichos nb sti nuevos por tipo.RData")
 
 dat.plots.type.new<-dat.plots
 
-load(file = "/Users/Fran/Dropbox (Personal)/Analisis IMED/lme/output/DB/20210322 DB predichos nb sti continuacion por tipo")
+load(file = "output/DB/20210322 DB predichos nb sti continuacion por tipo.RData")
 
 dat.plots.type.cont<-dat.plots
 
-load(file = "/Users/Fran/Dropbox (Personal)/Analisis IMED/lme/output/DB/20210503 DB predichos nb sti nuevos.RData")
+load(file = "output/DB/20210503 DB predichos nb sti nuevos.RData")
 
 dat.plots.new<-dat.plots %>% as.data.table()
 
@@ -445,17 +444,25 @@ tab.red.prev <- dat.plots.type.prev %>%
             cf_lb = sum(cf_lb),
             dif = cf - yhat,
             dif_ub = cf_ub - ub,
-            dif_lb = cf_lb - lb) %>% 
-  pivot_wider(id_cols = Cancer_type, names_from = prevision, values_from = c(dif, dif_lb, dif_ub)) %>% 
+            dif_lb = cf_lb - lb,
+            var = dif*100/cf,
+            var_ub = dif_ub*100/cf_ub,
+            var_lb = dif_lb*100/cf_lb) %>% 
+  pivot_wider(id_cols = Cancer_type, names_from = prevision, values_from = c(dif, dif_lb, dif_ub,
+                                                                             var, var_lb, var_ub)) %>% 
   summarise(Cancer_type, dif_FONASA, dif_lb_FONASA, dif_ub_FONASA, dif_ISAPRE, dif_lb_ISAPRE, dif_ub_ISAPRE,
+                         var_FONASA, var_lb_FONASA, var_ub_FONASA, var_ISAPRE, var_lb_ISAPRE, var_ub_ISAPRE,
             dif = dif_FONASA - dif_ISAPRE,
             dif_lb = dif_lb_FONASA - dif_lb_ISAPRE,
-            dif_ub = dif_ub_FONASA - dif_ub_ISAPRE) %>% 
-  mutate(across(-Cancer_type, round), .keep = "all") %>% 
+            dif_ub = dif_ub_FONASA - dif_ub_ISAPRE)  %>% 
+  mutate(across(-Cancer_type, round, 2), .keep = "all") %>% 
   summarise(Cancer_type,
             FONASA = paste0(dif_FONASA, " (", dif_lb_FONASA, "-", dif_ub_FONASA, ")"),
             ISAPRE = paste0(dif_ISAPRE, " (", dif_lb_ISAPRE, "-", dif_ub_ISAPRE, ")"),
-            DIF = paste0(dif, " (", dif_lb, "-", dif_ub, ")"))
+            FONASA_var = paste0(var_FONASA, "% (", var_lb_FONASA, "%-", var_ub_FONASA, "%)"),
+            ISAPRE_var = paste0(var_ISAPRE, "% (", var_lb_ISAPRE, "%-", var_ub_ISAPRE, "%)"),
+            DIF = paste0(dif, " (", dif_lb, "-", dif_ub, ")")
+            )
 
 colnames(tab.red.prev) <- c("Cancer type", "FONASA Count (CI 95%)", "ISAPRE Count (CI 95%)", 
                          "Excess impact on FONASA Count (CI 95%)")
@@ -497,6 +504,54 @@ colnames(tab.red.prev) <- c("Cancer type", "FONASA Count (CI 95%)", "ISAPRE Coun
 tab.red.prev  
 
 #write_csv2(tab.red.prev, file = "/Users/Fran/Dropbox (Personal)/Analisis IMED/lme/paper/210315 lme tab3 prevision.csv")
+```
+
+```{r AGREGADAS POR PREVISION y tipo}
+tab3.agg.prev <- dat.plots.type.prev %>% 
+  filter(pandemia == 1, mod.int== "Insurance") %>% 
+  group_by(prevision) %>% 
+  summarise(count = sum(count),
+            yhat = sum(yhat),
+            cf = sum(cf),
+            ub = sum(ub),
+            lb = sum(lb),
+            cf_ub = sum(cf_ub),
+            cf_lb = sum(cf_lb),
+            dif = cf - yhat,
+            dif_ub = cf_ub - ub,
+            dif_lb = cf_lb - lb) %>% 
+  mutate(across(-prevision, round), .keep = "all") 
+
+tab3.agg.prev.2020 <- dat.plots.agg %>% 
+  filter(year==2020, mod.int== "Insurance") %>% 
+  group_by(prevision) %>% 
+  summarise(cf = sum(cf),
+            cf_ub = sum(cf_ub),
+            cf_lb = sum(cf_lb),) %>%
+  rename(total_2020=cf,
+         ub_2020=cf_ub,
+         lb_2020=cf_lb) %>% 
+  mutate(across(-prevision, round), .keep = "all")
+
+tab3.agg.prev <- left_join(tab3.agg.prev, tab3.agg.prev.2020)
+
+rm(tab3.agg.prev.2020)
+
+tab3.agg.prev<- tab3.agg.prev %>% 
+  mutate(reduction_perc=dif/total_2020*100,
+         reduction_ub= dif_ub/ub_2020*100,
+         reduction_lb= dif_lb/lb_2020*100) %>%
+  mutate(across(-prevision, ~round(., 2)), .keep = "all") %>% 
+  summarise(prevision,
+            DIF = paste0(dif, " (", dif_lb, "-", dif_ub, ")"),
+            PERCENT = paste0(reduction_perc,"% (", reduction_lb, "% -",
+                             reduction_ub, "%)"))
+
+colnames(tab3.agg.prev) <- c("Insurance","Count Reduction (CI 95%)", "% Expected lme 2020")
+
+write_csv2(tab3.agg.prev, file = "/Users/Fran/Dropbox (Personal)/Analisis IMED/lme/paper/210513 lme tab3 agregadas prev.csv")
+
+
 ```
 
 ```{r TODAS (POR TIPO) POR SEXO}
